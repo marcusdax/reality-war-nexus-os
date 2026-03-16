@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&family=Raleway:wght@100;300;400;500;700;900&display=swap');
 
 @custom-variant dark (&:is(.dark *));
 
@@ -76,6 +77,11 @@
   --sidebar-accent-foreground: oklch(0.141 0.005 285.823);
   --sidebar-border: oklch(0.92 0.004 286.32);
   --sidebar-ring: oklch(0.623 0.214 259.815);
+  --chakra-root: #e74c3c;
+  --chakra-heart: #27ae60;
+  --chakra-throat: #3498db;
+  --chakra-third-eye: #9b59b6;
+  --geometry-highlight: #00d4ff;
 }
 
 .dark {
@@ -134,6 +140,65 @@
 }
 
 @layer components {
+  .card-sacred {
+    @apply bg-card text-card-foreground rounded-lg border border-border p-6;
+    background: linear-gradient(135deg, rgba(22, 33, 62, 0.8) 0%, rgba(15, 52, 96, 0.6) 100%);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0, 212, 255, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 212, 255, 0.1);
+  }
+
+  .card-sacred:hover {
+    border-color: rgba(0, 212, 255, 0.5);
+    box-shadow: 0 8px 32px rgba(0, 212, 255, 0.2);
+    transform: translateY(-2px);
+  }
+
+  .glow-truth {
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.5), 0 0 40px rgba(0, 212, 255, 0.3);
+  }
+
+  .btn-truth {
+    @apply px-6 py-3 rounded-lg font-bold tracking-wider transition-all duration-300 text-slate-900;
+    background-color: #00d4ff;
+  }
+
+  .btn-truth:hover {
+    background-color: #00ffff;
+  }
+
+  .gradient-text-chakra {
+    background: linear-gradient(90deg, #e74c3c, #e67e22, #f39c12, #27ae60, #3498db, #9b59b6);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: gradient-shift 6s linear infinite;
+  }
+
+  @keyframes gradient-shift {
+    0% { background-position: 0% center; }
+    100% { background-position: 200% center; }
+  }
+
+  .pulse-glow {
+    animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 1; box-shadow: 0 0 20px rgba(0, 212, 255, 0.5); }
+    50% { opacity: 0.8; box-shadow: 0 0 40px rgba(0, 212, 255, 0.8); }
+  }
+
+  .float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+
   /**
    * Custom container utility that centers content and adds responsive padding.
    *

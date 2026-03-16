@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `users` ADD `oathTaken` int NOT NULL DEFAULT 0;\nALTER TABLE `users` ADD `oathTakenAt` timestamp;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3dfQkbeMm8pEmWy.root --database iyoYuhesc874x2G7yU6j2M --execute ALTER TABLE `users` ADD `oathTaken` int NOT NULL DEFAULT 0;\nALTER TABLE `users` ADD `oathTakenAt` timestamp;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 748
+}
