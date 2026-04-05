@@ -235,7 +235,7 @@ export default function Home() {
               <MapPin className="w-6 h-6 text-cyan-400" />
               Nearby Missions
             </h3>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => setLocation("/map")}>
               View Map
               <ArrowRight className="ml-2 w-4 h-4" />
             </Button>
@@ -248,32 +248,19 @@ export default function Home() {
             </div>
           ) : missionsQuery.data && missionsQuery.data.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {missionsQuery.data.slice(0, 6).map((mission) => (
-                <Card key={mission.id} className="card-sacred hover:scale-105 transition-transform cursor-pointer">
-                  <div className="flex items-start justify-between mb-3">
+              {missionsQuery.data.map((mission) => (
+                <Card key={mission.id} className="card-sacred hover:border-cyan-400/50 transition-colors">
+                  <div className="flex items-start justify-between mb-4">
                     <div>
-                      <h4 className="font-bold text-white">{mission.title}</h4>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {mission.missionType}
-                      </p>
+                      <h4 className="font-bold text-white mb-1">{mission.title}</h4>
+                      <p className="text-sm text-gray-400">{mission.description}</p>
                     </div>
-                    <span className={`px-2 py-1 rounded text-xs font-bold ${
-                      mission.difficulty === "easy" ? "bg-green-500/20 text-green-400" :
-                      mission.difficulty === "medium" ? "bg-yellow-500/20 text-yellow-400" :
-                      mission.difficulty === "hard" ? "bg-orange-500/20 text-orange-400" :
-                      "bg-red-500/20 text-red-400"
-                    }`}>
-                      {mission.difficulty}
-                    </span>
                   </div>
-                  <p className="text-sm text-gray-400 mb-4 line-clamp-2">
-                    {mission.description}
-                  </p>
-                  <div className="flex items-center justify-between pt-4 border-t border-slate-700">
-                    <span className="text-sm font-bold text-cyan-400">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs px-2 py-1 bg-cyan-400/10 text-cyan-400 rounded">
                       +{mission.rewardTruthCredits} Credits
                     </span>
-                    <Button size="sm" className="btn-truth text-xs">
+                    <Button size="sm" className="btn-truth">
                       Accept
                     </Button>
                   </div>
@@ -281,34 +268,10 @@ export default function Home() {
               ))}
             </div>
           ) : (
-            <Card className="card-sacred text-center py-12">
-              <MapPin className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+            <div className="text-center py-12">
               <p className="text-gray-400">No missions nearby. Check back soon!</p>
-            </Card>
+            </div>
           )}
-        </div>
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="card-sacred">
-            <h4 className="font-bold text-white mb-3">Reality Stream</h4>
-            <p className="text-sm text-gray-400 mb-4">
-              View community verifications and contribute to the shared reality ledger
-            </p>
-            <Button variant="outline" size="sm" className="w-full">
-              View Feed
-            </Button>
-          </Card>
-
-          <Card className="card-sacred">
-            <h4 className="font-bold text-white mb-3">Leaderboard</h4>
-            <p className="text-sm text-gray-400 mb-4">
-              See who's leading the Truth Credits rankings in your area
-            </p>
-            <Button variant="outline" size="sm" className="w-full">
-              View Rankings
-            </Button>
-          </Card>
         </div>
       </main>
     </div>

@@ -4,6 +4,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
 import * as db from "./db";
 import { generateSignature } from "./crypto";
+import { getSessionCookieOptions } from "./_core/cookies";
 
 // ============================================================================
 // MISSION ROUTER
@@ -590,8 +591,8 @@ export const appRouter = router({
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
-      const cookieOptions = require("./_core/cookies").getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie("manus_session", { ...cookieOptions, maxAge: -1 });
+      const cookieOptions = getSessionCookieOptions(ctx.req);
+      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
   }),

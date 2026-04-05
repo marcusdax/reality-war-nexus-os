@@ -22,6 +22,27 @@
       "when": 1773625319269,
       "tag": "0002_mean_romulus",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1775361282066,
+      "tag": "0003_medical_hitman",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1775414104304,
+      "tag": "0004_rare_black_widow",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1775414460815,
+      "tag": "0005_tough_sunset_bain",
+      "breakpoints": true
     }
   ]
 }
