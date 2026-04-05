@@ -220,7 +220,10 @@ export default function Home() {
                   Pledge your commitment to verifying reality and building community trust
                 </p>
               </div>
-              <Button className="btn-truth">
+              <Button className="btn-truth" onClick={() => {
+                // TODO: Implement oath taking logic
+                console.log("Take Oath clicked");
+              }}>
                 Take Oath
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Button>

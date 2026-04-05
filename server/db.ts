@@ -788,3 +788,37 @@ export async function getPostComments(postId: number) {
     .where(eq(postComments.postId, postId))
     .orderBy(asc(postComments.createdAt));
 }
+
+
+// ============================================================================
+// TERRITORY QUERIES
+// ============================================================================
+
+export async function getTerritoriesNearby(
+  latitude: number,
+  longitude: number,
+  radiusKm: number = 10
+) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  // Simple distance calculation (in real app, use proper geospatial queries)
+  // For now, return empty array as territories table doesn't exist yet
+  return [];
+}
+
+export async function getTerritoryById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  // Return undefined as territories table doesn't exist yet
+  return undefined;
+}
+
+export async function getTerritoryLeaderboard() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  // Return empty array as territories table doesn't exist yet
+  return [];
+}
