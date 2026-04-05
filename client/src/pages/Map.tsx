@@ -8,6 +8,9 @@ import { ArrowLeft, MapPin, Users, Zap } from "lucide-react";
 import { useLocation } from "wouter";
 import { FACTIONS } from "@shared/factions";
 
+// Define libraries outside component to prevent re-renders
+const GOOGLE_MAPS_LIBRARIES: ("places" | "drawing" | "geometry")[] = ["places", "drawing", "geometry"];
+
 interface TerritoryData {
   id: number;
   gridId: string;
@@ -75,7 +78,7 @@ export default function MapPage() {
       <div className="flex-1 flex gap-4 p-4 overflow-hidden">
         {/* Map */}
         <div className="flex-1 bg-card rounded-lg border border-border overflow-hidden">
-          <LoadScript googleMapsApiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "AIzaSyDummyKeyForDevelopment"} libraries={["places", "drawing", "geometry"]}>
+          <LoadScript googleMapsApiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "AIzaSyDummyKeyForDevelopment"} libraries={GOOGLE_MAPS_LIBRARIES}>
             <TerritoryMap onTerritorySelect={setSelectedTerritory} />
           </LoadScript>
         </div>
