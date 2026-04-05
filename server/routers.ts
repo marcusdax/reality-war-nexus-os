@@ -469,9 +469,7 @@ const profileRouter = router({
     }
 
     // Update oath status in database
-    // Note: The database update happens through the drizzle ORM
-    // For now, we just mark it as successful
-    // In production, this would update the users table directly
+    await db.updateUserOathStatus(ctx.user.id, true);
 
     // Award initial Truth Credits
     const signature = generateSignature({
@@ -483,10 +481,13 @@ const profileRouter = router({
     await db.recordTruthCreditTransaction({
       userId: ctx.user.id,
       transactionType: "earn_mission",
-      amount: 50,
+      amount: 500,
       reason: "Shadow Corps oath taken",
       cryptographicSignature: signature,
     });
+
+    // Award XP
+    await db.updateUserXP(ctx.user.id, 100);
 
     // Award first badge
     await db.awardBadge(ctx.user.id, "shadow_corps_recruit", "Joined the Shadow Corps");

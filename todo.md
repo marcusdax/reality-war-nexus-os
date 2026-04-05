@@ -381,9 +381,37 @@
 
 ---
 
+## Current Sprint - Immediate Implementation
+
+### Oath Taking Flow
+- [x] Create OathModal component with confirmation dialog
+- [x] Add tRPC procedure for recording oath in database
+- [x] Wire Take Oath button to trigger modal
+- [x] Add success notification after oath completion
+- [x] Update profile UI to hide oath section after taken
+
+### Territories Database Population
+- [x] Create territories table schema in Drizzle
+- [x] Run database migration
+- [x] Create seed script to populate sample territories
+- [x] Add database query functions for territory retrieval
+- [x] Update TerritoryMap to display populated data
+
+### Mission Acceptance Logic
+- [x] Create mission acceptance UI (Accept/Decline buttons)
+- [x] Add tRPC procedure for accepting missions
+- [x] Add tRPC procedure for completing missions
+- [x] Wire mission cards to show acceptance state
+- [x] Add XP and Truth Credit reward logic
+- [x] Display user's active missions
+
 ## Completed Features
 
-(None yet - tracking begins at project start)
+- [x] User authentication with Manus OAuth
+- [x] Home dashboard with user stats
+- [x] Navigation between home and map pages
+- [x] Territory map page with faction overview
+- [x] Button click handlers
 
 ---
 

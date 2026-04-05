@@ -217,3 +217,28 @@ export const missionAcceptances = mysqlTable("mission_acceptances", {
 
 export type MissionAcceptance = typeof missionAcceptances.$inferSelect;
 export type InsertMissionAcceptance = typeof missionAcceptances.$inferInsert;
+
+/**
+ * Territories: Geographic regions controlled by different factions
+ */
+export const territories = mysqlTable("territories", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  faction: mysqlEnum("faction", ["truth_seekers", "reality_architects", "shadow_corps", "neutral"]).default("neutral").notNull(),
+  centerLatitude: decimal("centerLatitude", { precision: 10, scale: 8 }).notNull(),
+  centerLongitude: decimal("centerLongitude", { precision: 11, scale: 8 }).notNull(),
+  radiusMeters: int("radiusMeters").default(1000).notNull(),
+  signalStrength: int("signalStrength").default(50).notNull(), // 0-100
+  memberCount: int("memberCount").default(0).notNull(),
+  controlledSince: timestamp("controlledSince").defaultNow().notNull(),
+  description: text("description"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  factionIdx: index("idx_faction").on(table.faction),
+  locationIdx: index("idx_territory_location").on(table.centerLatitude, table.centerLongitude),
+  signalIdx: index("idx_signal_strength").on(table.signalStrength),
+}));
+
+export type Territory = typeof territories.$inferSelect;
+export type InsertTerritory = typeof territories.$inferInsert;

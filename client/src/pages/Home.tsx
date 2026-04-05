@@ -1,6 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { OathModal } from "@/components/OathModal";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { MapPin, Zap, Users, Shield, ArrowRight, Loader2 } from "lucide-react";
@@ -10,6 +11,7 @@ import { useLocation } from "wouter";
 export default function Home() {
   const { user, loading: authLoading, isAuthenticated, logout } = useAuth();
   const [location, setLocation] = useLocation();
+  const [oathModalOpen, setOathModalOpen] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   // Fetch user profile data
@@ -50,8 +52,8 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-cyan-400" />
-          <p className="text-gray-300">Initializing Reality War...</p>
+          <Loader2 className="w-12 h-12 text-cyan-400 animate-spin mx-auto mb-4" />
+          <p className="text-gray-400">Loading your mission...</p>
         </div>
       </div>
     );
@@ -59,52 +61,13 @@ export default function Home() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center px-4">
-        <div className="text-center max-w-2xl">
-          <div className="mb-8 animate-pulse">
-            <div className="w-20 h-20 mx-auto mb-4 rounded-full border-2 border-cyan-400 flex items-center justify-center">
-              <Zap className="w-10 h-10 text-cyan-400" />
-            </div>
-          </div>
-          <h1 className="text-5xl font-bold mb-4 gradient-text-chakra">
-            The Reality War
-          </h1>
-          <p className="text-xl text-gray-300 mb-2">Nexus OS</p>
-          <p className="text-gray-400 mb-8 text-lg">
-            Join the Shadow Corps. Verify reality. Earn Truth Credits.
-          </p>
-          <p className="text-gray-500 mb-12 max-w-xl mx-auto">
-            A civic engagement platform where every verification matters. Document infrastructure, environmental data, and civic issues through Magic Moments. Build your Truth Score and help your community see reality clearly.
-          </p>
-          <a href={getLoginUrl()}>
-            <Button className="btn-truth text-lg px-8 py-6 mb-8">
-              Enter the Shadow Corps
-              <ArrowRight className="ml-2 w-5 h-5" />
-            </Button>
-          </a>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16">
-            <div className="card-sacred">
-              <Shield className="w-8 h-8 text-chakra-throat mx-auto mb-3" />
-              <h3 className="font-bold text-lg mb-2">Verify Reality</h3>
-              <p className="text-sm text-gray-400">
-                Submit 15-second Magic Moments documenting civic conditions
-              </p>
-            </div>
-            <div className="card-sacred">
-              <Zap className="w-8 h-8 text-chakra-root mx-auto mb-3" />
-              <h3 className="font-bold text-lg mb-2">Earn Truth Credits</h3>
-              <p className="text-sm text-gray-400">
-                Get rewarded for verified contributions to community knowledge
-              </p>
-            </div>
-            <div className="card-sacred">
-              <Users className="w-8 h-8 text-chakra-heart mx-auto mb-3" />
-              <h3 className="font-bold text-lg mb-2">Build Community</h3>
-              <p className="text-sm text-gray-400">
-                Collaborate with others to create a verified reality ledger
-              </p>
-            </div>
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <h1 className="text-4xl font-bold text-white mb-4">Reality War</h1>
+          <p className="text-gray-400 mb-8">Join the Shadow Corps and help verify reality</p>
+          <Button className="btn-truth" onClick={() => window.location.href = getLoginUrl()}>
+            Sign In with Manus
+          </Button>
         </div>
       </div>
     );
@@ -124,22 +87,13 @@ export default function Home() {
               <p className="text-xs text-gray-400">Nexus OS</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-medium text-white">{user?.name}</p>
-              <p className="text-xs text-gray-400">{user?.role}</p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                logout();
-                setLocation("/");
-              }}
-            >
-              Logout
-            </Button>
+          <div className="text-right hidden sm:block">
+            <p className="text-sm font-medium text-white">{user?.name}</p>
+            <p className="text-xs text-gray-400">{user?.role}</p>
           </div>
+          <Button variant="outline" size="sm" onClick={logout}>
+            Logout
+          </Button>
         </div>
       </header>
 
@@ -147,25 +101,17 @@ export default function Home() {
       <main className="container py-8">
         {/* Welcome Section */}
         <div className="mb-12">
-          <h2 className="text-3xl font-bold text-white mb-2">
-            Welcome, {user?.name?.split(" ")[0]}
-          </h2>
-          <p className="text-gray-400">
-            {profileQuery.data?.oathTaken
-              ? "You are a member of the Shadow Corps. Continue your mission."
-              : "Take the Shadow Corps oath to begin your verification journey."}
-          </p>
+          <h2 className="text-4xl font-bold text-white mb-2">Welcome, {user?.name?.split(" ")[0]}</h2>
+          <p className="text-gray-400">Take the Shadow Corps oath to begin your verification journey.</p>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-12">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
           <Card className="card-sacred">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400">Truth Credits</p>
-                <p className="text-2xl font-bold text-cyan-400">
-                  {profileQuery.data?.truthCredits || 0}
-                </p>
+                <p className="text-3xl font-bold text-cyan-400">{profileQuery.data?.truthCredits || 0}</p>
               </div>
               <Zap className="w-8 h-8 text-cyan-400 opacity-50" />
             </div>
@@ -175,11 +121,9 @@ export default function Home() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400">XP</p>
-                <p className="text-2xl font-bold text-green-400">
-                  {profileQuery.data?.experiencePoints || 0}
-                </p>
+                <p className="text-3xl font-bold text-purple-400">{profileQuery.data?.experiencePoints || 0}</p>
               </div>
-              <Shield className="w-8 h-8 text-green-400 opacity-50" />
+              <Shield className="w-8 h-8 text-purple-400 opacity-50" />
             </div>
           </Card>
 
@@ -187,11 +131,9 @@ export default function Home() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400">Tier</p>
-                <p className="text-2xl font-bold text-purple-400 capitalize">
-                  {profileQuery.data?.shadowCorpsTier || "recruit"}
-                </p>
+                <p className="text-3xl font-bold text-magenta-400">{profileQuery.data?.shadowCorpsTier || "Recruit"}</p>
               </div>
-              <Users className="w-8 h-8 text-purple-400 opacity-50" />
+              <Users className="w-8 h-8 text-magenta-400 opacity-50" />
             </div>
           </Card>
 
@@ -199,11 +141,9 @@ export default function Home() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400">Badges</p>
-                <p className="text-2xl font-bold text-orange-400">
-                  {profileQuery.data?.badges?.length || 0}
-                </p>
+                <p className="text-3xl font-bold text-amber-400">{profileQuery.data?.badges?.length || 0}</p>
               </div>
-              <Shield className="w-8 h-8 text-orange-400 opacity-50" />
+              <Shield className="w-8 h-8 text-amber-400 opacity-50" />
             </div>
           </Card>
         </div>
@@ -220,10 +160,7 @@ export default function Home() {
                   Pledge your commitment to verifying reality and building community trust
                 </p>
               </div>
-              <Button className="btn-truth" onClick={() => {
-                // TODO: Implement oath taking logic
-                console.log("Take Oath clicked");
-              }}>
+              <Button className="btn-truth" onClick={() => setOathModalOpen(true)}>
                 Take Oath
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
@@ -246,27 +183,32 @@ export default function Home() {
 
           {missionsQuery.isLoading ? (
             <div className="text-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin mx-auto text-cyan-400 mb-2" />
+              <Loader2 className="w-8 h-8 text-cyan-400 animate-spin mx-auto mb-2" />
               <p className="text-gray-400">Loading missions...</p>
             </div>
           ) : missionsQuery.data && missionsQuery.data.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {missionsQuery.data.map((mission) => (
                 <Card key={mission.id} className="card-sacred hover:border-cyan-400/50 transition-colors">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h4 className="font-bold text-white mb-1">{mission.title}</h4>
-                      <p className="text-sm text-gray-400">{mission.description}</p>
+                  <div className="mb-4">
+                    <h4 className="font-bold text-white mb-2">{mission.title}</h4>
+                    <p className="text-sm text-gray-400 line-clamp-2">{mission.description}</p>
+                  </div>
+
+                  <div className="space-y-2 mb-4 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-400">Difficulty:</span>
+                      <span className="text-white font-bold capitalize">{mission.difficulty}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-400">Reward:</span>
+                      <span className="text-cyan-400 font-bold">{mission.rewardTruthCredits} Credits</span>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs px-2 py-1 bg-cyan-400/10 text-cyan-400 rounded">
-                      +{mission.rewardTruthCredits} Credits
-                    </span>
-                    <Button size="sm" className="btn-truth">
-                      Accept
-                    </Button>
-                  </div>
+
+                  <Button size="sm" className="btn-truth w-full">
+                    Accept Mission
+                  </Button>
                 </Card>
               ))}
             </div>
@@ -277,6 +219,15 @@ export default function Home() {
           )}
         </div>
       </main>
+
+      {/* Oath Modal */}
+      <OathModal
+        open={oathModalOpen}
+        onOpenChange={setOathModalOpen}
+        onOathTaken={() => {
+          profileQuery.refetch();
+        }}
+      />
     </div>
   );
 }

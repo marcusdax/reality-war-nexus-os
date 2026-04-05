@@ -2,6 +2,7 @@ import { eq, and, desc, asc, gte, lte, sql, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
+  InsertTerritory,
   users,
   missions,
   magicMoments,
@@ -12,6 +13,7 @@ import {
   badges,
   postComments,
   missionAcceptances,
+  territories,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -802,23 +804,109 @@ export async function getTerritoriesNearby(
   const db = await getDb();
   if (!db) return [];
   
-  // Simple distance calculation (in real app, use proper geospatial queries)
-  // For now, return empty array as territories table doesn't exist yet
-  return [];
+  try {
+    // Simple distance-based filtering
+    const allTerritories = await db.select().from(territories);
+    
+    // Filter by approximate distance
+    const nearby = allTerritories.filter(t => {
+      const lat1 = Number(t.centerLatitude);
+      const lon1 = Number(t.centerLongitude);
+      const lat2 = latitude;
+      const lon2 = longitude;
+      
+      const R = 6371; // Earth's radius in km
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      const distance = R * c;
+      
+      return distance <= radiusKm;
+    });
+    
+    return nearby;
+  } catch (error) {
+    console.error("[Database] Failed to get nearby territories:", error);
+    return [];
+  }
 }
 
 export async function getTerritoryById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
   
-  // Return undefined as territories table doesn't exist yet
-  return undefined;
+  try {
+    const result = await db
+      .select()
+      .from(territories)
+      .where(eq(territories.id, id))
+      .limit(1);
+    
+    return result[0];
+  } catch (error) {
+    console.error("[Database] Failed to get territory:", error);
+    return undefined;
+  }
 }
 
-export async function getTerritoryLeaderboard() {
+export async function getTerritoryLeaderboard(limit: number = 10) {
   const db = await getDb();
   if (!db) return [];
   
-  // Return empty array as territories table doesn't exist yet
-  return [];
+  try {
+    const result = await db
+      .select()
+      .from(territories)
+      .orderBy(desc(territories.signalStrength), desc(territories.memberCount))
+      .limit(limit);
+    
+    return result;
+  } catch (error) {
+    console.error("[Database] Failed to get territory leaderboard:", error);
+    return [];
+  }
 }
+
+
+// ============================================================================
+// USER OATH & XP UPDATES
+// ============================================================================
+
+export async function updateUserOathStatus(userId: number, oathTaken: boolean) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  try {
+    await db
+      .update(users)
+      .set({ oathTaken: oathTaken ? 1 : 0, oathTakenAt: oathTaken ? new Date() : undefined })
+      .where(eq(users.id, userId));
+    return { success: true };
+  } catch (error) {
+    console.error("[Database] Failed to update oath status:", error);
+    throw error;
+  }
+}
+
+export async function updateUserXP(userId: number, xpAmount: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  try {
+    const user = await getUserById(userId);
+    if (!user) return undefined;
+    
+    await db
+      .update(users)
+      .set({ experiencePoints: user.experiencePoints + xpAmount })
+      .where(eq(users.id, userId));
+    return { success: true };
+  } catch (error) {
+    console.error("[Database] Failed to update XP:", error);
+    throw error;
+  }
+}
+

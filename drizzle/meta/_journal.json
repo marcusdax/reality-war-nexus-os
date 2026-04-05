@@ -43,6 +43,13 @@
       "when": 1775414460815,
       "tag": "0005_tough_sunset_bain",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1775419560833,
+      "tag": "0006_numerous_mantis",
+      "breakpoints": true
     }
   ]
 }
