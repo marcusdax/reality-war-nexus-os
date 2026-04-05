@@ -586,37 +586,7 @@ const adminRouter = router({
 // ============================================================================
 
 export const appRouter = router({
-  system: router({
-    runMigration: adminProcedure.mutation(async () => {
-      const database = await db.getDb();
-      if (!database) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
-      }
-
-      try {
-        // Create tables if they don't exist
-        const tables = [
-          `CREATE TABLE IF NOT EXISTS factions (id int AUTO_INCREMENT NOT NULL, name varchar(100) NOT NULL, description text, color varchar(7) NOT NULL, icon varchar(255), memberCount int NOT NULL DEFAULT 0, totalSignalStrength int NOT NULL DEFAULT 0, territoriesControlled int NOT NULL DEFAULT 0, createdAt timestamp NOT NULL DEFAULT (now()), CONSTRAINT factions_id PRIMARY KEY(id), CONSTRAINT factions_name_unique UNIQUE(name))`,
-          `CREATE TABLE IF NOT EXISTS user_faction_memberships (id int AUTO_INCREMENT NOT NULL, userId int NOT NULL, factionId int NOT NULL, joinedAt timestamp NOT NULL DEFAULT (now()), signalStrength int NOT NULL DEFAULT 0, factionRank varchar(100) NOT NULL DEFAULT 'member', CONSTRAINT user_faction_memberships_id PRIMARY KEY(id), INDEX idx_user_faction (userId, factionId))`,
-          `CREATE TABLE IF NOT EXISTS territories (id int AUTO_INCREMENT NOT NULL, gridId varchar(100) NOT NULL, centerLatitude decimal(10,8) NOT NULL, centerLongitude decimal(11,8) NOT NULL, radiusMeters int NOT NULL DEFAULT 500, controllingFactionId int, signalStrengthEco int NOT NULL DEFAULT 0, signalStrengthData int NOT NULL DEFAULT 0, signalStrengthTech int NOT NULL DEFAULT 0, signalStrengthShadow int NOT NULL DEFAULT 0, capturePointsRequired int NOT NULL DEFAULT 100, lastCapturedAt timestamp, lastCapturedBy int, createdAt timestamp NOT NULL DEFAULT (now()), updatedAt timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT territories_id PRIMARY KEY(id), CONSTRAINT territories_gridId_unique UNIQUE(gridId), INDEX idx_grid_id (gridId), INDEX idx_controlling_faction (controllingFactionId), INDEX idx_territory_location (centerLatitude, centerLongitude))`,
-          `CREATE TABLE IF NOT EXISTS territory_capture_history (id int AUTO_INCREMENT NOT NULL, territoryId int NOT NULL, previousFactionId int, newFactionId int NOT NULL, capturedBy int NOT NULL, signalStrengthUsed int NOT NULL, capturedAt timestamp NOT NULL DEFAULT (now()), CONSTRAINT territory_capture_history_id PRIMARY KEY(id), INDEX idx_territory_capture (territoryId), INDEX idx_capture_faction (newFactionId))`,
-          `CREATE TABLE IF NOT EXISTS signal_strength_ledger (id int AUTO_INCREMENT NOT NULL, userId int NOT NULL, factionId int NOT NULL, transactionType enum('mission_complete','verification','territory_capture','territory_defense','transfer','admin_adjustment') NOT NULL, amount int NOT NULL, reason varchar(255), relatedEntityType varchar(50), relatedEntityId int, timestamp timestamp NOT NULL DEFAULT (now()), CONSTRAINT signal_strength_ledger_id PRIMARY KEY(id), INDEX idx_signal_user_faction (userId, factionId), INDEX idx_signal_transaction (transactionType))`,
-        ];
-
-        for (const sql of tables) {
-          await database.execute(sql);
-        }
-
-        return { success: true, message: "Migration completed successfully" };
-      } catch (error: any) {
-        console.error("Migration error:", error);
-        if (error.message?.includes("already exists")) {
-          return { success: true, message: "Tables already exist" };
-        }
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error.message });
-      }
-    }),
-  }),
+  system: router({}), // Placeholder for system router
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
@@ -631,41 +601,6 @@ export const appRouter = router({
   anomaly: anomalyRouter,
   realityStream: realityStreamRouter,
   profile: profileRouter,
-  territory: router({
-    getNearby: protectedProcedure
-      .input(
-        z.object({
-          latitude: z.number(),
-          longitude: z.number(),
-          radiusKm: z.number().default(10),
-        })
-      )
-      .query(async ({ input }) => {
-        return db.getTerritoriesNearby(input.latitude, input.longitude, input.radiusKm);
-      }),
-
-    getById: protectedProcedure
-      .input(z.object({ id: z.number() }))
-      .query(async ({ input }) => {
-        const territory = await db.getTerritoryById(input.id);
-        if (!territory) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Territory not found" });
-        }
-        return territory;
-      }),
-
-    getLeaderboard: publicProcedure
-      .input(z.object({ limit: z.number().default(100) }))
-      .query(async ({ input }) => {
-        return db.getTerritoryLeaderboard(input.limit);
-      }),
-
-    getCaptureHistory: protectedProcedure
-      .input(z.object({ territoryId: z.number() }))
-      .query(async ({ input }) => {
-        return db.getCaptureHistory(input.territoryId);
-      }),
-  }),
   admin: adminRouter,
 });
 
