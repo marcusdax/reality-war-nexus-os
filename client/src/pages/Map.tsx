@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { LoadScript } from "@react-google-maps/api";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { TerritoryMap } from "@/components/TerritoryMap";
 import { Button } from "@/components/ui/button";
@@ -74,7 +75,9 @@ export default function MapPage() {
       <div className="flex-1 flex gap-4 p-4 overflow-hidden">
         {/* Map */}
         <div className="flex-1 bg-card rounded-lg border border-border overflow-hidden">
-          <TerritoryMap onTerritorySelect={setSelectedTerritory} />
+          <LoadScript googleMapsApiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "AIzaSyDummyKeyForDevelopment"} libraries={["places", "drawing", "geometry"]}>
+            <TerritoryMap onTerritorySelect={setSelectedTerritory} />
+          </LoadScript>
         </div>
 
         {/* Sidebar */}
