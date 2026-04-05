@@ -631,6 +631,41 @@ export const appRouter = router({
   anomaly: anomalyRouter,
   realityStream: realityStreamRouter,
   profile: profileRouter,
+  territory: router({
+    getNearby: protectedProcedure
+      .input(
+        z.object({
+          latitude: z.number(),
+          longitude: z.number(),
+          radiusKm: z.number().default(10),
+        })
+      )
+      .query(async ({ input }) => {
+        return db.getTerritoriesNearby(input.latitude, input.longitude, input.radiusKm);
+      }),
+
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const territory = await db.getTerritoryById(input.id);
+        if (!territory) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Territory not found" });
+        }
+        return territory;
+      }),
+
+    getLeaderboard: publicProcedure
+      .input(z.object({ limit: z.number().default(100) }))
+      .query(async ({ input }) => {
+        return db.getTerritoryLeaderboard(input.limit);
+      }),
+
+    getCaptureHistory: protectedProcedure
+      .input(z.object({ territoryId: z.number() }))
+      .query(async ({ input }) => {
+        return db.getCaptureHistory(input.territoryId);
+      }),
+  }),
   admin: adminRouter,
 });
 

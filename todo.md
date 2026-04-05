@@ -521,3 +521,31 @@
 5. Community governance
 
 ---
+
+---
+
+## CURRENT SPRINT: Interactive Territory Map
+
+### Map Component Development
+- [ ] Create hexagonal territory visualization component
+- [ ] Implement Google Maps integration with custom overlays
+- [ ] Add faction color coding (ECO=green, DATA=blue, TECH=purple, SHADOW=red)
+- [ ] Create territory detail modal with control info
+- [ ] Add territory capture progress visualization
+- [ ] Implement user location tracking on map
+
+### Map Features
+- [ ] Show nearby territories with faction control
+- [ ] Display territory leaderboards
+- [ ] Add territory filtering by faction
+- [ ] Create territory info cards
+- [ ] Implement zoom and pan controls
+- [ ] Add legend showing faction colors
+
+### Map Integration
+- [ ] Create tRPC procedures for territory queries
+- [ ] Implement real-time territory updates
+- [ ] Add territory capture event listeners
+- [ ] Create map page route
+- [ ] Integrate with home dashboard
+- [ ] Add "View Map" button to home page

@@ -235,7 +235,7 @@ export default function Home() {
               <MapPin className="w-6 h-6 text-cyan-400" />
               Nearby Missions
             </h3>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => setLocation("/map")}>
               View Map
               <ArrowRight className="ml-2 w-4 h-4" />
             </Button>
