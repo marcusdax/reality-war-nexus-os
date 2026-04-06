@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Share2, Copy, QrCode, Heart, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
+import { trpc } from "@/lib/trpc";
 
 interface MagicMoment {
   id: number;
@@ -28,13 +29,38 @@ export default function PublicMagicMoment() {
   const [copied, setCopied] = useState(false);
   const [showQR, setShowQR] = useState(false);
 
+  const postId = params?.id ? parseInt(params.id) : null;
+  const { data: posts, isLoading } = trpc.realityStream.getFeed.useQuery({
+    limit: 100,
+    offset: 0,
+    sort: "recent",
+  });
+
   useEffect(() => {
-    if (params?.id) {
-      // In production, fetch from API
-      // For now, show placeholder
+    if (posts && postId) {
+      const post = posts.find((p: any) => p.id === postId);
+      if (post) {
+        const mediaUrls = Array.isArray(post.mediaUrls) ? post.mediaUrls : [];
+        setMagicMoment({
+          id: post.id,
+          userId: post.userId,
+          userName: "Anonymous",
+          content: post.content,
+          mediaUrls: mediaUrls,
+          signature: "",
+          latitude: 0,
+          longitude: 0,
+          timestamp: new Date().toISOString(),
+          upvotes: post.upvotes || 0,
+          downvotes: post.downvotes || 0,
+          createdAt: typeof post.createdAt === 'string' ? post.createdAt : post.createdAt.toISOString(),
+        });
+      }
+      setLoading(false);
+    } else if (!isLoading) {
       setLoading(false);
     }
-  }, [params?.id]);
+  }, [posts, postId, isLoading]);
 
   const handleCopyLink = () => {
     const url = window.location.href;
