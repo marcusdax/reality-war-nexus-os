@@ -878,6 +878,25 @@ export async function getTerritoryLeaderboard(limit: number = 10) {
 // USER OATH & XP UPDATES
 // ============================================================================
 
+export async function updateUserFaction(
+  userId: number,
+  faction: "eco" | "data" | "tech" | "shadow"
+) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  try {
+    await db
+      .update(users)
+      .set({ chosenFaction: faction } as any)
+      .where(eq(users.id, userId));
+    return { success: true };
+  } catch (error) {
+    console.error("[Database] Failed to update faction:", error);
+    throw error;
+  }
+}
+
 export async function updateUserOathStatus(userId: number, oathTaken: boolean) {
   const db = await getDb();
   if (!db) return undefined;

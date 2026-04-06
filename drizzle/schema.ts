@@ -11,6 +11,7 @@ export const users = mysqlTable("users", {
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  chosenFaction: mysqlEnum("chosenFaction", ["eco", "data", "tech", "shadow"]),
   shadowCorpsTier: mysqlEnum("shadowCorpsTier", ["recruit", "analyst", "sentinel", "architect", "witness"]).default("recruit").notNull(),
   experiencePoints: int("experiencePoints").default(0).notNull(),
   totalTruthCredits: int("totalTruthCredits").default(0).notNull(),

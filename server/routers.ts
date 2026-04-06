@@ -455,6 +455,48 @@ const profileRouter = router({
       return db.updateUserProfile(ctx.user.id, input);
     }),
 
+  completeOnboarding: protectedProcedure
+    .input(
+      z.object({
+        faction: z.enum(["eco", "data", "tech", "shadow"]),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const user = await db.getUserById(ctx.user.id);
+      if (!user) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+      }
+
+      // Set faction
+      await db.updateUserFaction(ctx.user.id, input.faction);
+
+      // Take oath if not already taken
+      if (!user.oathTaken) {
+        await db.updateUserOathStatus(ctx.user.id, true);
+
+        const signature = generateSignature({
+          userId: ctx.user.id,
+          faction: input.faction,
+          action: "onboarding_oath",
+          timestamp: new Date().getTime(),
+        });
+
+        await db.recordTruthCreditTransaction({
+          userId: ctx.user.id,
+          transactionType: "earn_mission",
+          amount: 500,
+          reason: `Joined the ${input.faction.toUpperCase()} faction and took the Shadow Corps oath`,
+          cryptographicSignature: signature,
+        });
+
+        await db.updateUserXP(ctx.user.id, 100);
+        await db.awardBadge(ctx.user.id, `faction_${input.faction}`, `Pledged to the ${input.faction} faction`);
+        await db.awardBadge(ctx.user.id, "shadow_corps_recruit", "Joined the Shadow Corps");
+      }
+
+      return { success: true, faction: input.faction };
+    }),
+
   takeOath: protectedProcedure.mutation(async ({ ctx }) => {
     const user = await db.getUserById(ctx.user.id);
     if (!user) {

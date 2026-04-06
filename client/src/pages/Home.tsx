@@ -30,6 +30,13 @@ export default function Home() {
     { enabled: isAuthenticated }
   );
 
+  // Redirect new users (no faction chosen) to the cinematic onboarding flow
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && profileQuery.data && !(profileQuery.data as any).chosenFaction) {
+      setLocation("/onboarding");
+    }
+  }, [authLoading, isAuthenticated, profileQuery.data, setLocation]);
+
   // Get user's current location
   useEffect(() => {
     if (isAuthenticated && navigator.geolocation) {
@@ -130,10 +137,16 @@ export default function Home() {
           <Card className="card-sacred">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-400">Tier</p>
-                <p className="text-3xl font-bold text-magenta-400">{profileQuery.data?.shadowCorpsTier || "Recruit"}</p>
+                <p className="text-sm text-gray-400">Faction</p>
+                <p className={`text-2xl font-bold capitalize ${
+                  { eco: "text-emerald-400", data: "text-blue-400", tech: "text-amber-400", shadow: "text-violet-400" }[(profileQuery.data as any)?.chosenFaction ?? ""] ?? "text-gray-400"
+                }`}>
+                  {(profileQuery.data as any)?.chosenFaction
+                    ? { eco: "ECO ✦", data: "DATA ⬡", tech: "TECH ◈", shadow: "SHADOW ◬" }[(profileQuery.data as any).chosenFaction]
+                    : "—"}
+                </p>
               </div>
-              <Users className="w-8 h-8 text-magenta-400 opacity-50" />
+              <Users className="w-8 h-8 text-gray-400 opacity-50" />
             </div>
           </Card>
 
