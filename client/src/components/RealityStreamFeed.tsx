@@ -195,18 +195,60 @@ export default function RealityStreamFeed() {
               </div>
 
               {/* Post Media */}
-              {post.mediaUrls && (post.mediaUrls as string[]).length > 0 && (
-                <div className="grid grid-cols-2 gap-2">
-                  {(post.mediaUrls as string[]).map((url, idx) => (
-                    <img
-                      key={idx}
-                      src={url}
-                      alt="Post media"
-                      className="rounded-lg max-h-48 object-cover"
-                    />
-                  ))}
-                </div>
-              )}
+              {post.mediaUrls && (() => {
+                let mediaUrls: string[] = [];
+                try {
+                  mediaUrls = Array.isArray(post.mediaUrls) 
+                    ? post.mediaUrls 
+                    : typeof post.mediaUrls === 'string' 
+                      ? JSON.parse(post.mediaUrls) 
+                      : [];
+                } catch (e) {
+                  mediaUrls = [];
+                }
+                
+                return mediaUrls.length > 0 ? (
+                  <div className="space-y-3">
+                    {mediaUrls.map((url: any, idx: number) => {
+                      const urlStr = typeof url === 'string' ? url : '';
+                      // Check for type prefixes added by MagicMomentCapture
+                      const isVideo = urlStr.startsWith('video-') || urlStr.includes('.webm') || urlStr.includes('video');
+                      const isAudio = urlStr.startsWith('audio-') || urlStr.includes('audio');
+                      // Strip type prefix for actual URL
+                      const actualUrl = urlStr.replace(/^(video-|audio-)/, '');
+                      
+                      if (isVideo) {
+                        return (
+                          <video
+                            key={idx}
+                            src={actualUrl}
+                            controls
+                            className="w-full rounded-lg max-h-96 bg-black"
+                          />
+                        );
+                      } else if (isAudio) {
+                        return (
+                          <audio
+                            key={idx}
+                            src={actualUrl}
+                            controls
+                            className="w-full"
+                          />
+                        );
+                      } else {
+                        return (
+                          <img
+                            key={idx}
+                            src={urlStr}
+                            alt="Post media"
+                            className="rounded-lg max-h-48 object-cover w-full"
+                          />
+                        );
+                      }
+                    })}
+                  </div>
+                ) : null;
+              })()}
 
               {/* Post Actions */}
               <div className="flex items-center justify-between pt-4 border-t border-slate-700">

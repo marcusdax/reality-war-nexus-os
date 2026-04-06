@@ -58,15 +58,19 @@ export default function MagicMomentCapture() {
         setUploadProgress((prev) => Math.min(prev + 10, 90));
       }, 200);
 
-      // For now, create a local object URL (in production, this would be S3 URL)
+      // Create a local object URL with type prefix for detection
       const mediaUrl = URL.createObjectURL(blob);
-      setUploadedMediaUrl(mediaUrl);
+      // Add type info to URL for proper rendering
+      const typePrefix = type === 'video' ? 'video-' : 'audio-';
+      const taggedUrl = `${typePrefix}${mediaUrl}`;
+      
+      setUploadedMediaUrl(taggedUrl);
 
       clearInterval(progressInterval);
       setUploadProgress(100);
       setIsUploading(false);
 
-      toast.success(`${type === "video" ? "Video" : "Audio"} uploaded successfully!`);
+      toast.success(`${type === "video" ? "Video" : "Audio"} ready to share!`);
     } catch (error) {
       toast.error("Failed to upload media");
       console.error(error);

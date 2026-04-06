@@ -375,11 +375,11 @@
 
 ---
 
-## Bug Fixes & Issues
+## Bug Fi## Known Issues
 
-- [ ] (None reported yet)
-
----
+- [x] Magic Moment capture error when sharing to Reality Stream - mediaUrls handling issue (FIXED)
+- [ ] Implement real S3 upload instead of blob URLs
+- [ ] Add media type metadata to posts--
 
 ## Current Sprint - Mobile Recording & AR Backbone
 
