@@ -51,8 +51,17 @@ const missionRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Mission not found" });
       }
 
+      const alreadyAccepted = await db.hasUserAcceptedMission(ctx.user.id, input.missionId);
+      if (alreadyAccepted) {
+        throw new TRPCError({ code: "CONFLICT", message: "Mission already accepted" });
+      }
+
       return db.acceptMission(ctx.user.id, input.missionId);
     }),
+
+  getMyMissions: protectedProcedure.query(async ({ ctx }) => {
+    return db.getUserActiveMissionsWithDetails(ctx.user.id);
+  }),
 
   submitMagicMoment: protectedProcedure
     .input(

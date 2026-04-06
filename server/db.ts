@@ -713,6 +713,58 @@ export async function getUserActiveMissions(userId: number) {
     );
 }
 
+export async function getUserActiveMissionsWithDetails(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const rows = await db
+    .select({
+      acceptanceId: missionAcceptances.id,
+      acceptedAt: missionAcceptances.acceptedAt,
+      completedAt: missionAcceptances.completedAt,
+      acceptanceStatus: missionAcceptances.status,
+      missionId: missions.id,
+      title: missions.title,
+      description: missions.description,
+      missionType: missions.missionType,
+      difficulty: missions.difficulty,
+      rewardTruthCredits: missions.rewardTruthCredits,
+      rewardXp: missions.rewardXp,
+      validationCriteria: missions.validationCriteria,
+      locationLatitude: missions.locationLatitude,
+      locationLongitude: missions.locationLongitude,
+    })
+    .from(missionAcceptances)
+    .innerJoin(missions, eq(missionAcceptances.missionId, missions.id))
+    .where(
+      and(
+        eq(missionAcceptances.userId, userId),
+        eq(missionAcceptances.status, "in_progress")
+      )
+    )
+    .orderBy(missionAcceptances.acceptedAt);
+
+  return rows;
+}
+
+export async function hasUserAcceptedMission(userId: number, missionId: number) {
+  const db = await getDb();
+  if (!db) return false;
+
+  const rows = await db
+    .select({ id: missionAcceptances.id })
+    .from(missionAcceptances)
+    .where(
+      and(
+        eq(missionAcceptances.userId, userId),
+        eq(missionAcceptances.missionId, missionId)
+      )
+    )
+    .limit(1);
+
+  return rows.length > 0;
+}
+
 export async function completeMission(
   userId: number,
   missionId: number,

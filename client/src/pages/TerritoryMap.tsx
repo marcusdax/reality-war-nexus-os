@@ -2,66 +2,93 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { MapPin, ArrowLeft, Zap, Users, Shield } from "lucide-react";
+import { MapPin, ArrowLeft, Zap, Users, Shield, Loader2, Radio } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 
+const FACTION_CONFIG: Record<string, { label: string; textColor: string; bgColor: string; borderColor: string; barColor: string }> = {
+  shadow_corps: {
+    label: "Shadow Corps",
+    textColor: "text-fuchsia-400",
+    bgColor: "bg-fuchsia-950/40",
+    borderColor: "border-fuchsia-400/40",
+    barColor: "bg-fuchsia-400",
+  },
+  truth_seekers: {
+    label: "Truth Seekers",
+    textColor: "text-cyan-400",
+    bgColor: "bg-cyan-950/40",
+    borderColor: "border-cyan-400/40",
+    barColor: "bg-cyan-400",
+  },
+  reality_architects: {
+    label: "Reality Architects",
+    textColor: "text-amber-400",
+    bgColor: "bg-amber-950/40",
+    borderColor: "border-amber-400/40",
+    barColor: "bg-amber-400",
+  },
+  neutral: {
+    label: "Unclaimed",
+    textColor: "text-gray-400",
+    bgColor: "bg-slate-800/40",
+    borderColor: "border-slate-600/40",
+    barColor: "bg-gray-500",
+  },
+};
+
+function SignalBar({ strength, barColor }: { strength: number; barColor: string }) {
+  return (
+    <div className="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden">
+      <div
+        className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+        style={{ width: `${strength}%` }}
+      />
+    </div>
+  );
+}
+
 export default function TerritoryMap() {
-  const [location, setLocation] = useLocation();
+  const [_location, setLocation] = useLocation();
   const { user, isAuthenticated } = useAuth();
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-
-  // Fetch nearby territories
-  const territoriesQuery = trpc.territories.getNearby.useQuery(
-    userLocation ? {
-      latitude: userLocation.lat,
-      longitude: userLocation.lng,
-      radiusKm: 10,
-    } : { latitude: 37.7749, longitude: -122.4194, radiusKm: 10 },
-    { enabled: isAuthenticated }
-  );
 
   // Get user's current location
   useEffect(() => {
     if (isAuthenticated && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          });
+          setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
         },
         () => {
-          // Default to San Francisco if geolocation fails
           setUserLocation({ lat: 37.7749, lng: -122.4194 });
         }
       );
+    } else if (isAuthenticated) {
+      setUserLocation({ lat: 37.7749, lng: -122.4194 });
     }
   }, [isAuthenticated]);
 
-  // Sample territories for display
-  const sampleTerritories = [
-    { id: 1, name: "Downtown Core", faction: "shadow_corps", signalStrength: 85, memberCount: 42 },
-    { id: 2, name: "Mission District", faction: "truth_seekers", signalStrength: 72, memberCount: 28 },
-    { id: 3, name: "Sunset Heights", faction: "reality_architects", signalStrength: 65, memberCount: 19 },
-    { id: 4, name: "Bay View", faction: "neutral", signalStrength: 45, memberCount: 12 },
-    { id: 5, name: "North Beach", faction: "shadow_corps", signalStrength: 78, memberCount: 35 },
-    { id: 6, name: "Financial District", faction: "reality_architects", signalStrength: 68, memberCount: 22 },
-  ];
+  // Fetch nearby territories from tRPC
+  const territoriesQuery = trpc.territories.getNearby.useQuery(
+    userLocation
+      ? { latitude: userLocation.lat, longitude: userLocation.lng, radiusKm: 15 }
+      : { latitude: 37.7749, longitude: -122.4194, radiusKm: 15 },
+    { enabled: isAuthenticated }
+  );
 
-  const factionColors: Record<string, string> = {
-    shadow_corps: "text-magenta-400",
-    truth_seekers: "text-cyan-400",
-    reality_architects: "text-amber-400",
-    neutral: "text-gray-400",
-  };
+  const territories = territoriesQuery.data ?? [];
 
-  const factionLabels: Record<string, string> = {
-    shadow_corps: "Shadow Corps",
-    truth_seekers: "Truth Seekers",
-    reality_architects: "Reality Architects",
-    neutral: "Neutral",
-  };
+  // Compute faction totals for overview
+  const factionTotals = territories.reduce<Record<string, { count: number; members: number; avgSignal: number; total: number }>>((acc, t) => {
+    const f = t.faction;
+    if (!acc[f]) acc[f] = { count: 0, members: 0, avgSignal: 0, total: 0 };
+    acc[f].count += 1;
+    acc[f].members += t.memberCount;
+    acc[f].total += t.signalStrength;
+    acc[f].avgSignal = Math.round(acc[f].total / acc[f].count);
+    return acc;
+  }, {});
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -69,12 +96,7 @@ export default function TerritoryMap() {
       <header className="border-b border-slate-700 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container flex items-center justify-between h-16">
           <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setLocation("/")}
-              className="mr-2"
-            >
+            <Button variant="ghost" size="sm" onClick={() => setLocation("/")} className="mr-2">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back
             </Button>
@@ -83,7 +105,7 @@ export default function TerritoryMap() {
             </div>
             <div>
               <h1 className="font-bold text-white">Territory Map</h1>
-              <p className="text-xs text-gray-400">Nexus OS</p>
+              <p className="text-xs text-gray-400">Nexus OS · {territories.length} zones active</p>
             </div>
           </div>
           <div className="text-right hidden sm:block">
@@ -93,18 +115,68 @@ export default function TerritoryMap() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="container py-8">
         {/* Map Placeholder */}
-        <div className="mb-12">
-          <Card className="card-sacred h-96 flex items-center justify-center border-2 border-dashed border-slate-600">
-            <div className="text-center">
-              <MapPin className="w-16 h-16 text-cyan-400/50 mx-auto mb-4" />
-              <p className="text-gray-400 mb-2">Interactive Territory Map</p>
-              <p className="text-sm text-gray-500">Map visualization coming soon</p>
+        <div className="mb-10">
+          <Card className="card-sacred h-72 flex items-center justify-center border-2 border-dashed border-slate-600 relative overflow-hidden">
+            {/* Background grid effect */}
+            <div className="absolute inset-0 opacity-5"
+              style={{
+                backgroundImage: "linear-gradient(#00bcd4 1px, transparent 1px), linear-gradient(90deg, #00bcd4 1px, transparent 1px)",
+                backgroundSize: "40px 40px",
+              }}
+            />
+            <div className="text-center relative z-10">
+              <Radio className="w-14 h-14 text-cyan-400/40 mx-auto mb-3" />
+              <p className="text-gray-300 font-medium mb-1">Interactive Nexus Map</p>
+              <p className="text-sm text-gray-500">Real-time territory visualization — coming in Phase 2</p>
+              {userLocation && (
+                <p className="text-xs text-cyan-500/60 mt-2">
+                  Signal lock: {userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}
+                </p>
+              )}
             </div>
           </Card>
         </div>
+
+        {/* Faction Overview */}
+        {territories.length > 0 && (
+          <div className="mb-10">
+            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+              <Users className="w-5 h-5 text-purple-400" />
+              Faction Control
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {(["shadow_corps", "truth_seekers", "reality_architects", "neutral"] as const).map((factionId) => {
+                const cfg = FACTION_CONFIG[factionId];
+                const stats = factionTotals[factionId] ?? { count: 0, members: 0, avgSignal: 0 };
+                return (
+                  <Card
+                    key={factionId}
+                    className={`card-sacred border ${cfg.borderColor} ${cfg.bgColor}`}
+                  >
+                    <p className={`text-xs font-bold ${cfg.textColor} mb-2`}>{cfg.label.toUpperCase()}</p>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-gray-500">Zones</span>
+                        <span className="text-white font-bold">{stats.count}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-gray-500">Operatives</span>
+                        <span className="text-white font-bold">{stats.members}</span>
+                      </div>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-gray-500">Avg Signal</span>
+                        <span className={`font-bold ${cfg.textColor}`}>{stats.avgSignal || 0}%</span>
+                      </div>
+                      <SignalBar strength={stats.avgSignal || 0} barColor={cfg.barColor} />
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Territories Grid */}
         <div className="mb-12">
@@ -113,88 +185,69 @@ export default function TerritoryMap() {
             Nearby Territories
           </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sampleTerritories.map((territory) => (
-              <Card key={territory.id} className="card-sacred hover:border-cyan-400/50 transition-colors">
-                <div className="mb-4">
-                  <h4 className="font-bold text-white mb-2">
-                    {territory.name}
-                  </h4>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className={`w-3 h-3 rounded-full ${factionColors[territory.faction] || "bg-gray-400"}`} />
-                    <span className={`text-sm font-medium ${factionColors[territory.faction] || "text-gray-400"}`}>
-                      {factionLabels[territory.faction] || territory.faction}
-                    </span>
-                  </div>
-                </div>
+          {territoriesQuery.isLoading ? (
+            <div className="text-center py-16">
+              <Loader2 className="w-8 h-8 text-cyan-400 animate-spin mx-auto mb-3" />
+              <p className="text-gray-400">Scanning for territory signals...</p>
+            </div>
+          ) : territories.length === 0 ? (
+            <div className="text-center py-16">
+              <Radio className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+              <p className="text-gray-400">No territories detected in range.</p>
+              <p className="text-sm text-gray-500 mt-1">Expand radius or check back after a seed run.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {territories
+                .slice()
+                .sort((a, b) => b.signalStrength - a.signalStrength)
+                .map((territory) => {
+                  const cfg = FACTION_CONFIG[territory.faction] ?? FACTION_CONFIG.neutral;
+                  return (
+                    <Card
+                      key={territory.id}
+                      className={`card-sacred border ${cfg.borderColor} hover:shadow-md transition-all duration-200`}
+                    >
+                      <div className="mb-3">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <h4 className="font-bold text-white text-sm leading-tight">{territory.name}</h4>
+                          <span className={`text-xs px-2 py-0.5 rounded-full border ${cfg.borderColor} ${cfg.bgColor} ${cfg.textColor} font-semibold flex-shrink-0`}>
+                            {cfg.label}
+                          </span>
+                        </div>
+                        {territory.description && (
+                          <p className="text-xs text-gray-500 leading-relaxed line-clamp-2 mt-1">
+                            {territory.description}
+                          </p>
+                        )}
+                      </div>
 
-                <div className="space-y-2 mb-4 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-400">Signal Strength:</span>
-                    <span className="text-cyan-400 font-bold">{territory.signalStrength}%</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-400">Members:</span>
-                    <span className="text-white font-bold">{territory.memberCount}</span>
-                  </div>
-                </div>
+                      <div className="space-y-2.5 mb-3 text-xs">
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-gray-500">Signal Strength</span>
+                            <span className={`font-bold ${cfg.textColor}`}>{territory.signalStrength}%</span>
+                          </div>
+                          <SignalBar strength={territory.signalStrength} barColor={cfg.barColor} />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-500">Active Operatives</span>
+                          <span className="text-white font-bold">{territory.memberCount}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-500">Radius</span>
+                          <span className="text-gray-300">{(territory.radiusMeters / 1000).toFixed(1)} km</span>
+                        </div>
+                      </div>
 
-                <Button size="sm" className="btn-truth w-full">
-                  View Details
-                </Button>
-              </Card>
-            ))}
-          </div>
-        </div>
-
-        {/* Faction Overview */}
-        <div className="mb-12">
-          <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
-            <Users className="w-6 h-6 text-purple-400" />
-            Faction Overview
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card className="card-sacred border-l-4 border-magenta-400">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-400">SHADOW CORPS</p>
-                  <p className="text-xl font-bold text-magenta-400">Investigation</p>
-                </div>
-                <Shield className="w-8 h-8 text-magenta-400 opacity-50" />
-              </div>
-            </Card>
-
-            <Card className="card-sacred border-l-4 border-cyan-400">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-400">TRUTH SEEKERS</p>
-                  <p className="text-xl font-bold text-cyan-400">Verification</p>
-                </div>
-                <Shield className="w-8 h-8 text-cyan-400 opacity-50" />
-              </div>
-            </Card>
-
-            <Card className="card-sacred border-l-4 border-amber-400">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-400">REALITY ARCHITECTS</p>
-                  <p className="text-xl font-bold text-amber-400">Framework</p>
-                </div>
-                <Shield className="w-8 h-8 text-amber-400 opacity-50" />
-              </div>
-            </Card>
-
-            <Card className="card-sacred border-l-4 border-gray-400">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-400">NEUTRAL</p>
-                  <p className="text-xl font-bold text-gray-400">Collaboration</p>
-                </div>
-                <Shield className="w-8 h-8 text-gray-400 opacity-50" />
-              </div>
-            </Card>
-          </div>
+                      <Button size="sm" variant="outline" className="w-full text-xs h-7">
+                        Scout Territory
+                      </Button>
+                    </Card>
+                  );
+                })}
+            </div>
+          )}
         </div>
       </main>
     </div>

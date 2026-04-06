@@ -4,15 +4,24 @@ import { Card } from "@/components/ui/card";
 import { OathModal } from "@/components/OathModal";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { MapPin, Zap, Users, Shield, ArrowRight, Loader2, Eye } from "lucide-react";
+import { MapPin, Zap, Users, Shield, ArrowRight, Loader2, Eye, CheckCircle2, Clock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import { toast } from "sonner";
+
+const DIFFICULTY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  easy:   { label: "Easy",   color: "text-emerald-400", bg: "bg-emerald-950/40 border-emerald-400/30" },
+  medium: { label: "Medium", color: "text-amber-400",   bg: "bg-amber-950/40 border-amber-400/30" },
+  hard:   { label: "Hard",   color: "text-red-400",     bg: "bg-red-950/40 border-red-400/30" },
+  expert: { label: "Expert", color: "text-fuchsia-400", bg: "bg-fuchsia-950/40 border-fuchsia-400/30" },
+};
 
 export default function Home() {
   const { user, loading: authLoading, isAuthenticated, logout } = useAuth();
   const [location, setLocation] = useLocation();
   const [oathModalOpen, setOathModalOpen] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [acceptingId, setAcceptingId] = useState<number | null>(null);
 
   // Fetch user profile data
   const profileQuery = trpc.profile.getProfile.useQuery(
@@ -22,13 +31,32 @@ export default function Home() {
 
   // Fetch nearby missions
   const missionsQuery = trpc.missions.listNearby.useQuery(
-    userLocation ? {
-      latitude: userLocation.lat,
-      longitude: userLocation.lng,
-      radiusKm: 5,
-    } : { latitude: 37.7749, longitude: -122.4194, radiusKm: 5 },
+    userLocation
+      ? { latitude: userLocation.lat, longitude: userLocation.lng, radiusKm: 5 }
+      : { latitude: 37.7749, longitude: -122.4194, radiusKm: 5 },
     { enabled: isAuthenticated }
   );
+
+  // Fetch user's active missions
+  const myMissionsQuery = trpc.missions.getMyMissions.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+
+  const acceptMutation = trpc.missions.accept.useMutation({
+    onSuccess: (_data, variables) => {
+      toast.success("Mission accepted! Complete it to earn rewards.");
+      myMissionsQuery.refetch();
+      setAcceptingId(null);
+    },
+    onError: (error) => {
+      if (error.data?.code === "CONFLICT") {
+        toast.info("You've already accepted this mission.");
+      } else {
+        toast.error("Failed to accept mission. Try again.");
+      }
+      setAcceptingId(null);
+    },
+  });
 
   // Redirect new users (no faction chosen) to the cinematic onboarding flow
   useEffect(() => {
@@ -42,18 +70,16 @@ export default function Home() {
     if (isAuthenticated && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          });
+          setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
         },
         () => {
-          // Default to San Francisco if geolocation fails
           setUserLocation({ lat: 37.7749, lng: -122.4194 });
         }
       );
     }
   }, [isAuthenticated]);
+
+  const acceptedMissionIds = new Set((myMissionsQuery.data ?? []).map((m) => m.missionId));
 
   if (authLoading) {
     return (
@@ -204,7 +230,52 @@ export default function Home() {
           </Card>
         ) : null}
 
-        {/* Missions Section */}
+        {/* Active Missions */}
+        {myMissionsQuery.data && myMissionsQuery.data.length > 0 && (
+          <div className="mb-12">
+            <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+              <Clock className="w-6 h-6 text-amber-400" />
+              Active Missions
+              <span className="text-sm font-normal text-amber-400 bg-amber-950/40 border border-amber-400/30 px-2 py-0.5 rounded-full">
+                {myMissionsQuery.data.length} in progress
+              </span>
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {myMissionsQuery.data.map((m) => {
+                const dcfg = DIFFICULTY_CONFIG[m.difficulty] ?? DIFFICULTY_CONFIG.medium;
+                return (
+                  <Card key={m.acceptanceId} className="card-sacred border border-amber-400/20 bg-amber-950/10">
+                    <div className="mb-3">
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <h4 className="font-bold text-white text-sm leading-tight">{m.title}</h4>
+                        <span className={`text-xs px-2 py-0.5 rounded-full border ${dcfg.bg} ${dcfg.color} font-semibold flex-shrink-0`}>
+                          {dcfg.label}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 line-clamp-2">{m.description}</p>
+                    </div>
+                    <div className="text-xs text-gray-400 space-y-1 mb-3">
+                      <div className="flex justify-between">
+                        <span>Reward</span>
+                        <span className="text-cyan-400 font-bold">{m.rewardTruthCredits} TC + {m.rewardXp} XP</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Accepted</span>
+                        <span className="text-gray-300">{new Date(m.acceptedAt).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-amber-400/80">
+                      <Clock className="w-3 h-3" />
+                      <span>In progress — submit a Magic Moment to complete</span>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Nearby Missions */}
         <div className="mb-12">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-2xl font-bold text-white flex items-center gap-2">
@@ -224,29 +295,66 @@ export default function Home() {
             </div>
           ) : missionsQuery.data && missionsQuery.data.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {missionsQuery.data.map((mission) => (
-                <Card key={mission.id} className="card-sacred hover:border-cyan-400/50 transition-colors">
-                  <div className="mb-4">
-                    <h4 className="font-bold text-white mb-2">{mission.title}</h4>
-                    <p className="text-sm text-gray-400 line-clamp-2">{mission.description}</p>
-                  </div>
+              {missionsQuery.data.map((mission) => {
+                const dcfg = DIFFICULTY_CONFIG[mission.difficulty] ?? DIFFICULTY_CONFIG.medium;
+                const isAccepted = acceptedMissionIds.has(mission.id);
+                const isAccepting = acceptingId === mission.id;
 
-                  <div className="space-y-2 mb-4 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-400">Difficulty:</span>
-                      <span className="text-white font-bold capitalize">{mission.difficulty}</span>
+                return (
+                  <Card key={mission.id} className="card-sacred hover:border-cyan-400/50 transition-colors flex flex-col">
+                    <div className="mb-3 flex-1">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <h4 className="font-bold text-white text-sm leading-tight">{mission.title}</h4>
+                        <span className={`text-xs px-2 py-0.5 rounded-full border ${dcfg.bg} ${dcfg.color} font-semibold flex-shrink-0`}>
+                          {dcfg.label}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-400 line-clamp-2">{mission.description}</p>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-400">Reward:</span>
-                      <span className="text-cyan-400 font-bold">{mission.rewardTruthCredits} Credits</span>
-                    </div>
-                  </div>
 
-                  <Button size="sm" className="btn-truth w-full">
-                    Accept Mission
-                  </Button>
-                </Card>
-              ))}
+                    <div className="space-y-1.5 mb-4 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-400">Reward</span>
+                        <span className="text-cyan-400 font-bold">{mission.rewardTruthCredits} TC</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-400">XP</span>
+                        <span className="text-purple-400 font-bold">+{mission.rewardXp}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-400">Type</span>
+                        <span className="text-gray-300 capitalize">{mission.missionType.replace("_", " ")}</span>
+                      </div>
+                    </div>
+
+                    {isAccepted ? (
+                      <div className="flex items-center justify-center gap-2 py-2 text-sm text-emerald-400 bg-emerald-950/30 border border-emerald-400/20 rounded-md">
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span className="font-medium">Mission Accepted</span>
+                      </div>
+                    ) : (
+                      <Button
+                        size="sm"
+                        className="btn-truth w-full"
+                        disabled={isAccepting}
+                        onClick={() => {
+                          setAcceptingId(mission.id);
+                          acceptMutation.mutate({ missionId: mission.id });
+                        }}
+                      >
+                        {isAccepting ? (
+                          <>
+                            <Loader2 className="w-3 h-3 mr-2 animate-spin" />
+                            Accepting...
+                          </>
+                        ) : (
+                          "Accept Mission"
+                        )}
+                      </Button>
+                    )}
+                  </Card>
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-12">
