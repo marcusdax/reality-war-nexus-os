@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { OathModal } from "@/components/OathModal";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { MapPin, Zap, Users, Shield, ArrowRight, Loader2 } from "lucide-react";
+import { MapPin, Zap, Users, Shield, ArrowRight, Loader2, Eye } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 
@@ -167,6 +167,29 @@ export default function Home() {
             </div>
           </Card>
         )}
+
+        {/* Shadow Corps Command Center Link */}
+        {profileQuery.data?.oathTaken ? (
+          <Card
+            className="card-sacred mb-8 border border-fuchsia-400/30 bg-gradient-to-r from-fuchsia-950/30 to-slate-900/50 cursor-pointer hover:border-fuchsia-400/60 transition-colors"
+            onClick={() => setLocation("/shadow-corps")}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-fuchsia-600 to-purple-700 flex items-center justify-center flex-shrink-0">
+                  <Eye className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-sm">Shadow Corps Command Center</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Ghost Audits · The Crucible · Shadow Black Book
+                  </p>
+                </div>
+              </div>
+              <ArrowRight className="w-5 h-5 text-fuchsia-400" />
+            </div>
+          </Card>
+        ) : null}
 
         {/* Missions Section */}
         <div className="mb-12">
