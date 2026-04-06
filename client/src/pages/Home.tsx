@@ -7,6 +7,7 @@ import { trpc } from "@/lib/trpc";
 import { MapPin, Zap, Users, Shield, ArrowRight, Loader2, Eye } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import RealityStreamFeed from "@/components/RealityStreamFeed";
 
 export default function Home() {
   const { user, loading: authLoading, isAuthenticated, logout } = useAuth();
@@ -241,8 +242,16 @@ export default function Home() {
             </div>
           )}
         </div>
-      </main>
 
+        {/* Reality Stream Feed */}
+        <div className="mb-12">
+          <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+            <Zap className="w-6 h-6 text-cyan-400" />
+            Reality Stream
+          </h3>
+          <RealityStreamFeed />
+        </div>
+      </main>
       {/* Oath Modal */}
       <OathModal
         open={oathModalOpen}

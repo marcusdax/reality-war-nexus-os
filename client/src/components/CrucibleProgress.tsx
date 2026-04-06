@@ -66,7 +66,7 @@ export function CrucibleProgress({ currentPhase, onPhaseAdvanced }: CrucibleProg
 
   const handleAdvance = async (targetPhase: CruciblePhase) => {
     try {
-      const finalPhase = targetPhase === "phase_3" ? "complete" : targetPhase;
+      const finalPhase: "phase_1" | "phase_2" | "phase_3" | "complete" = targetPhase === "phase_3" ? "complete" : (targetPhase as "phase_1" | "phase_2" | "phase_3");
       await advanceMutation.mutateAsync({ phase: finalPhase });
       toast.success(
         finalPhase === "complete"

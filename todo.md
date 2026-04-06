@@ -383,27 +383,26 @@
 
 ## Current Sprint - Immediate Implementation
 
-### Oath Taking Flow
-- [x] Create OathModal component with confirmation dialog
-- [x] Add tRPC procedure for recording oath in database
-- [x] Wire Take Oath button to trigger modal
-- [x] Add success notification after oath completion
-- [x] Update profile UI to hide oath section after taken
+### Maps Migration (Google Maps to Leaflet/OpenStreetMap)
+- [x] Install Leaflet and React-Leaflet dependencies
+- [x] Create new Map component using Leaflet
+- [x] Replace Google Maps component in TerritoryMap
+- [x] Add territory markers with faction colors
+- [x] Implement user location tracking
+- [x] Add map controls (zoom, pan, layer toggle)
+- [x] Remove Google Maps API dependencies
 
-### Territories Database Population
-- [x] Create territories table schema in Drizzle
-- [x] Run database migration
-- [x] Create seed script to populate sample territories
-- [x] Add database query functions for territory retrieval
-- [x] Update TerritoryMap to display populated data
-
-### Mission Acceptance Logic
-- [x] Create mission acceptance UI (Accept/Decline buttons)
-- [x] Add tRPC procedure for accepting missions
-- [x] Add tRPC procedure for completing missions
-- [x] Wire mission cards to show acceptance state
-- [x] Add XP and Truth Credit reward logic
-- [x] Display user's active missions
+### Reality Stream Social Feed
+- [x] Create post creation form component
+- [x] Add tRPC procedure for creating posts
+- [x] Build post feed display with pagination
+- [x] Create post card component with metadata
+- [x] Implement upvote/downvote system
+- [x] Add comment creation and display
+- [x] Wire feed to home page
+- [x] Add post deletion (for own posts)
+- [x] Implement content moderation flags
+- [x] Add markdown rendering for post content
 
 ## Completed Features
 

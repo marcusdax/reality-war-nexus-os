@@ -5,6 +5,7 @@ import { trpc } from "@/lib/trpc";
 import { MapPin, ArrowLeft, Zap, Users, Shield } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import LeafletMap from "@/components/LeafletMap";
 
 export default function TerritoryMap() {
   const [location, setLocation] = useLocation();
@@ -41,12 +42,12 @@ export default function TerritoryMap() {
 
   // Sample territories for display
   const sampleTerritories = [
-    { id: 1, name: "Downtown Core", faction: "shadow_corps", signalStrength: 85, memberCount: 42 },
-    { id: 2, name: "Mission District", faction: "truth_seekers", signalStrength: 72, memberCount: 28 },
-    { id: 3, name: "Sunset Heights", faction: "reality_architects", signalStrength: 65, memberCount: 19 },
-    { id: 4, name: "Bay View", faction: "neutral", signalStrength: 45, memberCount: 12 },
-    { id: 5, name: "North Beach", faction: "shadow_corps", signalStrength: 78, memberCount: 35 },
-    { id: 6, name: "Financial District", faction: "reality_architects", signalStrength: 68, memberCount: 22 },
+    { id: 1, name: "Downtown Core", faction: "shadow_corps", centerLatitude: 37.7749, centerLongitude: -122.4194, signalStrength: 85, memberCount: 42 },
+    { id: 2, name: "Mission District", faction: "truth_seekers", centerLatitude: 37.7599, centerLongitude: -122.4148, signalStrength: 72, memberCount: 28 },
+    { id: 3, name: "Sunset Heights", faction: "reality_architects", centerLatitude: 37.7614, centerLongitude: -122.4580, signalStrength: 65, memberCount: 19 },
+    { id: 4, name: "Bay View", faction: "neutral", centerLatitude: 37.7289, centerLongitude: -122.3852, signalStrength: 45, memberCount: 12 },
+    { id: 5, name: "North Beach", faction: "shadow_corps", centerLatitude: 37.8024, centerLongitude: -122.4107, signalStrength: 78, memberCount: 35 },
+    { id: 6, name: "Financial District", faction: "reality_architects", centerLatitude: 37.7909, centerLongitude: -122.3957, signalStrength: 68, memberCount: 22 },
   ];
 
   const factionColors: Record<string, string> = {
@@ -95,14 +96,16 @@ export default function TerritoryMap() {
 
       {/* Main Content */}
       <main className="container py-8">
-        {/* Map Placeholder */}
+        {/* Leaflet Map */}
         <div className="mb-12">
-          <Card className="card-sacred h-96 flex items-center justify-center border-2 border-dashed border-slate-600">
-            <div className="text-center">
-              <MapPin className="w-16 h-16 text-cyan-400/50 mx-auto mb-4" />
-              <p className="text-gray-400 mb-2">Interactive Territory Map</p>
-              <p className="text-sm text-gray-500">Map visualization coming soon</p>
-            </div>
+          <Card className="card-sacred h-96 overflow-hidden">
+            <LeafletMap
+              territories={sampleTerritories}
+              userLocation={userLocation || undefined}
+              onTerritoryClick={(territory) => {
+                console.log("Territory clicked:", territory);
+              }}
+            />
           </Card>
         </div>
 
