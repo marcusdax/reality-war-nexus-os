@@ -381,7 +381,43 @@
 
 ---
 
-## Current Sprint - Immediate Implementation
+## Current Sprint - Mobile Recording & AR Backbone
+
+### Mobile Video/Audio Recording
+- [x] Create MediaRecorder component for iOS/Android
+- [x] Implement video capture with preview
+- [x] Implement audio-only recording option
+- [x] Add recording timer and controls
+- [x] Implement stop/save/discard functionality
+- [x] Add media playback preview
+- [x] Handle browser permissions (camera, microphone)
+- [x] Optimize for mobile devices
+
+### Media Upload & S3 Integration
+- [ ] Create upload progress UI
+- [ ] Implement chunked upload for large files
+- [ ] Upload to S3 via server endpoint
+- [ ] Generate CDN URLs for media
+- [ ] Store media metadata in database
+- [ ] Create media gallery component
+
+### AR Backbone & Cryptographic Signing
+- [ ] Capture geolocation with recording
+- [ ] Record precise timestamps
+- [ ] Generate cryptographic signatures
+- [ ] Create Magic Moment records
+- [ ] Integrate with Reality Stream posts
+- [ ] Add verification metadata
+
+### PWA Configuration
+- [ ] Add manifest.json for PWA
+- [ ] Configure service worker
+- [ ] Enable camera/microphone permissions
+- [ ] Add install prompt for mobile
+- [ ] Test on iOS Safari
+- [ ] Test on Android Chrome
+
+## Previous Sprint - Immediate Implementation
 
 ### Maps Migration (Google Maps to Leaflet/OpenStreetMap)
 - [x] Install Leaflet and React-Leaflet dependencies

@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import TerritoryMap from "./pages/TerritoryMap";
 import ShadowCorps from "./pages/ShadowCorps";
+import MagicMomentCapture from "./pages/MagicMomentCapture";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -15,6 +16,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/map" component={TerritoryMap} />
       <Route path="/shadow-corps" component={ShadowCorps} />
+      <Route path="/capture" component={MagicMomentCapture} />
       <Route path="/404" component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

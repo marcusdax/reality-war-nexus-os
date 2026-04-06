@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { OathModal } from "@/components/OathModal";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { MapPin, Zap, Users, Shield, ArrowRight, Loader2, Eye } from "lucide-react";
+import { MapPin, Zap, Users, Shield, ArrowRight, Loader2, Eye, Video } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import RealityStreamFeed from "@/components/RealityStreamFeed";
@@ -191,6 +191,24 @@ export default function Home() {
             </div>
           </Card>
         ) : null}
+
+        {/* Capture Magic Moment CTA */}
+        <div className="mb-12">
+          <Card className="card-sacred border-l-4 border-cyan-400 bg-gradient-to-r from-cyan-950/30 to-slate-900/50 cursor-pointer hover:border-cyan-400/60 transition-colors" onClick={() => setLocation("/capture")}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center flex-shrink-0">
+                  <Video className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-lg">Capture Magic Moment</h3>
+                  <p className="text-sm text-gray-400">Record video or audio evidence of reality</p>
+                </div>
+              </div>
+              <ArrowRight className="w-5 h-5 text-cyan-400 flex-shrink-0" />
+            </div>
+          </Card>
+        </div>
 
         {/* Missions Section */}
         <div className="mb-12">
