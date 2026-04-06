@@ -194,9 +194,187 @@
     animation: float 3s ease-in-out infinite;
   }
 
+  /* Glow effects for interactive elements */
+  .glow-cyan {
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.4), inset 0 0 20px rgba(0, 212, 255, 0.1);
+  }
+
+  .glow-purple {
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.4), inset 0 0 20px rgba(168, 85, 247, 0.1);
+  }
+
+  .glow-pink {
+    box-shadow: 0 0 20px rgba(236, 72, 153, 0.4), inset 0 0 20px rgba(236, 72, 153, 0.1);
+  }
+
+  .glow-amber {
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.4), inset 0 0 20px rgba(251, 191, 36, 0.1);
+  }
+
   @keyframes float {
     0%, 100% { transform: translateY(0px); }
     50% { transform: translateY(-10px); }
+  }
+
+  /* Enhanced animations for gameplay mechanics */
+  .shimmer {
+    animation: shimmer 2s infinite;
+  }
+
+  @keyframes shimmer {
+    0% { opacity: 0.5; }
+    50% { opacity: 1; }
+    100% { opacity: 0.5; }
+  }
+
+  .slide-in-from-left {
+    animation: slide-in-from-left 0.5s ease-out;
+  }
+
+  @keyframes slide-in-from-left {
+    from {
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .slide-in-from-right {
+    animation: slide-in-from-right 0.5s ease-out;
+  }
+
+  @keyframes slide-in-from-right {
+    from {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .bounce-in {
+    animation: bounce-in 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+
+  @keyframes bounce-in {
+    0% {
+      opacity: 0;
+      transform: scale(0.3);
+    }
+    50% {
+      opacity: 1;
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  .tier-up-animation {
+    animation: tier-up 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes tier-up {
+    0% {
+      transform: scale(0.8) translateY(20px);
+      opacity: 0;
+    }
+    50% {
+      transform: scale(1.1);
+    }
+    100% {
+      transform: scale(1) translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .xp-gain-pulse {
+    animation: xp-gain-pulse 0.6s ease-out;
+  }
+
+  @keyframes xp-gain-pulse {
+    0% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(1.2);
+      opacity: 0;
+    }
+  }
+
+  /* Gradient backgrounds for tier cards */
+  .tier-recruit-glow {
+    background: linear-gradient(135deg, rgba(75, 85, 99, 0.3) 0%, rgba(55, 65, 81, 0.2) 100%);
+    border-color: rgba(107, 114, 128, 0.5);
+  }
+
+  .tier-analyst-glow {
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.2) 0%, rgba(34, 211, 238, 0.1) 100%);
+    border-color: rgba(0, 212, 255, 0.4);
+  }
+
+  .tier-sentinel-glow {
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.2) 0%, rgba(147, 51, 234, 0.1) 100%);
+    border-color: rgba(168, 85, 247, 0.4);
+  }
+
+  .tier-architect-glow {
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.2) 0%, rgba(219, 39, 119, 0.1) 100%);
+    border-color: rgba(236, 72, 153, 0.4);
+  }
+
+  .tier-witness-glow {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(245, 158, 11, 0.1) 100%);
+    border-color: rgba(251, 191, 36, 0.4);
+  }
+
+  /* Mission difficulty badges */
+  .difficulty-easy {
+    @apply bg-green-500/20 text-green-300 border border-green-500/50;
+  }
+
+  .difficulty-medium {
+    @apply bg-yellow-500/20 text-yellow-300 border border-yellow-500/50;
+  }
+
+  .difficulty-hard {
+    @apply bg-orange-500/20 text-orange-300 border border-orange-500/50;
+  }
+
+  .difficulty-expert {
+    @apply bg-red-500/20 text-red-300 border border-red-500/50;
+  }
+
+  /* Stat card enhancements */
+  .stat-card {
+    @apply relative overflow-hidden rounded-lg border border-slate-700 p-4 transition-all duration-300;
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.6) 100%);
+  }
+
+  .stat-card:hover {
+    @apply border-cyan-400/50 shadow-lg;
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.2);
+    transform: translateY(-2px);
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.1), transparent);
+    transition: left 0.5s;
+  }
+
+  .stat-card:hover::before {
+    left: 100%;
   }
 
   /**
