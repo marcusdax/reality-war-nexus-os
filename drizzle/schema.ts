@@ -242,3 +242,102 @@ export const territories = mysqlTable("territories", {
 
 export type Territory = typeof territories.$inferSelect;
 export type InsertTerritory = typeof territories.$inferInsert;
+
+/**
+ * Shadow Analyst Profiles: Extended profiles for Level 1-3 Shadow Corps analysts.
+ * Tracks AiTR score, Rep Score, Crucible progress, and mission statistics.
+ */
+export const shadowAnalystProfiles = mysqlTable("shadow_analyst_profiles", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  analystLevel: mysqlEnum("analystLevel", ["1", "2", "3"]).default("1").notNull(),
+  aitrScore: decimal("aitrScore", { precision: 5, scale: 2 }).default("0"),
+  repScore: decimal("repScore", { precision: 5, scale: 2 }).default("0"),
+  zkpCredentialHash: varchar("zkpCredentialHash", { length: 512 }),
+  specializations: json("specializations"),
+  missionsCompleted: int("missionsCompleted").default(0).notNull(),
+  ghostAuditsInitiated: int("ghostAuditsInitiated").default(0).notNull(),
+  soulsSaved: int("soulsSaved").default(0).notNull(),
+  cruciblePhase: mysqlEnum("cruciblePhase", ["none", "phase_1", "phase_2", "phase_3", "complete"]).default("none").notNull(),
+  crucibleStartedAt: timestamp("crucibleStartedAt"),
+  crucibleCompletedAt: timestamp("crucibleCompletedAt"),
+  psychEvalCompleted: int("psychEvalCompleted").default(0).notNull(),
+  technicalCertCompleted: int("technicalCertCompleted").default(0).notNull(),
+  immutableOathHash: varchar("immutableOathHash", { length: 512 }),
+  oathRenewedAt: timestamp("oathRenewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  userIdx: index("idx_analyst_user").on(table.userId),
+  levelIdx: index("idx_analyst_level").on(table.analystLevel),
+}));
+
+export type ShadowAnalystProfile = typeof shadowAnalystProfiles.$inferSelect;
+export type InsertShadowAnalystProfile = typeof shadowAnalystProfiles.$inferInsert;
+
+/**
+ * Ghost Audits: Covert intelligence-gathering operations against opaque entities.
+ * The constitutional immune system in action — documenting the state's physical footprint.
+ */
+export const ghostAudits = mysqlTable("ghost_audits", {
+  id: int("id").autoincrement().primaryKey(),
+  initiatedBy: int("initiatedBy").notNull(),
+  auditTitle: varchar("auditTitle", { length: 255 }).notNull(),
+  targetEntity: text("targetEntity").notNull(),
+  auditType: mysqlEnum("auditType", [
+    "financial_forensics",
+    "physical_surveillance",
+    "legal_analysis",
+    "behavioral_pattern",
+    "supply_chain",
+  ]).notNull(),
+  status: mysqlEnum("status", [
+    "initiated",
+    "active",
+    "synthesizing",
+    "complete",
+    "archived",
+  ]).default("initiated").notNull(),
+  pteConfidenceScore: decimal("pteConfidenceScore", { precision: 3, scale: 2 }),
+  findings: text("findings"),
+  evidenceUrls: json("evidenceUrls"),
+  publishedToBlackBook: int("publishedToBlackBook").default(0).notNull(),
+  analystLevel: mysqlEnum("analystLevel", ["1", "2", "3"]).default("1").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  completedAt: timestamp("completedAt"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  initiatedByIdx: index("idx_audit_initiated_by").on(table.initiatedBy),
+  statusIdx: index("idx_audit_status").on(table.status),
+  typeIdx: index("idx_audit_type").on(table.auditType),
+}));
+
+export type GhostAudit = typeof ghostAudits.$inferSelect;
+export type InsertGhostAudit = typeof ghostAudits.$inferInsert;
+
+/**
+ * Shadow Black Book Entries: Immutable, censorship-proof ledger of verified intelligence.
+ * Each entry is chained cryptographically — to censor it, you'd need to shut down the network.
+ */
+export const shadowBlackBookEntries = mysqlTable("shadow_black_book_entries", {
+  id: int("id").autoincrement().primaryKey(),
+  auditId: int("auditId"),
+  contributorId: int("contributorId").notNull(),
+  entryHash: varchar("entryHash", { length: 512 }).notNull(),
+  previousHash: varchar("previousHash", { length: 512 }),
+  title: varchar("title", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  evidenceUrls: json("evidenceUrls"),
+  verificationLevel: mysqlEnum("verificationLevel", ["1", "2", "3"]).default("1").notNull(),
+  consensusVotes: int("consensusVotes").default(0).notNull(),
+  redactionStatus: mysqlEnum("redactionStatus", ["public", "restricted", "classified"]).default("public").notNull(),
+  publishedAt: timestamp("publishedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  contributorIdx: index("idx_blackbook_contributor").on(table.contributorId),
+  auditIdx: index("idx_blackbook_audit").on(table.auditId),
+  levelIdx: index("idx_blackbook_level").on(table.verificationLevel),
+}));
+
+export type ShadowBlackBookEntry = typeof shadowBlackBookEntries.$inferSelect;
+export type InsertShadowBlackBookEntry = typeof shadowBlackBookEntries.$inferInsert;

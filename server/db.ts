@@ -14,6 +14,9 @@ import {
   postComments,
   missionAcceptances,
   territories,
+  shadowAnalystProfiles,
+  ghostAudits,
+  shadowBlackBookEntries,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -894,11 +897,11 @@ export async function updateUserOathStatus(userId: number, oathTaken: boolean) {
 export async function updateUserXP(userId: number, xpAmount: number) {
   const db = await getDb();
   if (!db) return undefined;
-  
+
   try {
     const user = await getUserById(userId);
     if (!user) return undefined;
-    
+
     await db
       .update(users)
       .set({ experiencePoints: user.experiencePoints + xpAmount })
@@ -908,5 +911,279 @@ export async function updateUserXP(userId: number, xpAmount: number) {
     console.error("[Database] Failed to update XP:", error);
     throw error;
   }
+}
+
+// ============================================================================
+// SHADOW ANALYST PROFILE QUERIES
+// ============================================================================
+
+export async function getOrCreateShadowAnalystProfile(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const existing = await db
+    .select()
+    .from(shadowAnalystProfiles)
+    .where(eq(shadowAnalystProfiles.userId, userId))
+    .limit(1);
+
+  if (existing.length > 0) return existing[0];
+
+  // Create a new profile for the user
+  await db.insert(shadowAnalystProfiles).values({ userId });
+
+  const created = await db
+    .select()
+    .from(shadowAnalystProfiles)
+    .where(eq(shadowAnalystProfiles.userId, userId))
+    .limit(1);
+
+  return created[0];
+}
+
+export async function updateAnalystProfile(
+  userId: number,
+  data: {
+    analystLevel?: "1" | "2" | "3";
+    aitrScore?: number;
+    repScore?: number;
+    zkpCredentialHash?: string;
+    specializations?: string[];
+    missionsCompleted?: number;
+    ghostAuditsInitiated?: number;
+    soulsSaved?: number;
+    cruciblePhase?: "none" | "phase_1" | "phase_2" | "phase_3" | "complete";
+    crucibleStartedAt?: Date;
+    crucibleCompletedAt?: Date;
+    psychEvalCompleted?: boolean;
+    technicalCertCompleted?: boolean;
+    immutableOathHash?: string;
+    oathRenewedAt?: Date;
+  }
+) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const updateData: Record<string, unknown> = {};
+  if (data.analystLevel !== undefined) updateData.analystLevel = data.analystLevel;
+  if (data.aitrScore !== undefined) updateData.aitrScore = sql`${data.aitrScore}`;
+  if (data.repScore !== undefined) updateData.repScore = sql`${data.repScore}`;
+  if (data.zkpCredentialHash !== undefined) updateData.zkpCredentialHash = data.zkpCredentialHash;
+  if (data.specializations !== undefined) updateData.specializations = JSON.stringify(data.specializations);
+  if (data.missionsCompleted !== undefined) updateData.missionsCompleted = data.missionsCompleted;
+  if (data.ghostAuditsInitiated !== undefined) updateData.ghostAuditsInitiated = data.ghostAuditsInitiated;
+  if (data.soulsSaved !== undefined) updateData.soulsSaved = data.soulsSaved;
+  if (data.cruciblePhase !== undefined) updateData.cruciblePhase = data.cruciblePhase;
+  if (data.crucibleStartedAt !== undefined) updateData.crucibleStartedAt = data.crucibleStartedAt;
+  if (data.crucibleCompletedAt !== undefined) updateData.crucibleCompletedAt = data.crucibleCompletedAt;
+  if (data.psychEvalCompleted !== undefined) updateData.psychEvalCompleted = data.psychEvalCompleted ? 1 : 0;
+  if (data.technicalCertCompleted !== undefined) updateData.technicalCertCompleted = data.technicalCertCompleted ? 1 : 0;
+  if (data.immutableOathHash !== undefined) updateData.immutableOathHash = data.immutableOathHash;
+  if (data.oathRenewedAt !== undefined) updateData.oathRenewedAt = data.oathRenewedAt;
+
+  await db
+    .update(shadowAnalystProfiles)
+    .set(updateData)
+    .where(eq(shadowAnalystProfiles.userId, userId));
+
+  return getOrCreateShadowAnalystProfile(userId);
+}
+
+export async function incrementAnalystStat(
+  userId: number,
+  stat: "missionsCompleted" | "ghostAuditsInitiated" | "soulsSaved"
+) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  await db
+    .update(shadowAnalystProfiles)
+    .set({ [stat]: sql`${shadowAnalystProfiles[stat]} + 1` })
+    .where(eq(shadowAnalystProfiles.userId, userId));
+}
+
+// ============================================================================
+// GHOST AUDIT QUERIES
+// ============================================================================
+
+export async function createGhostAudit(data: {
+  initiatedBy: number;
+  auditTitle: string;
+  targetEntity: string;
+  auditType: "financial_forensics" | "physical_surveillance" | "legal_analysis" | "behavioral_pattern" | "supply_chain";
+  pteConfidenceScore?: number;
+  analystLevel: "1" | "2" | "3";
+}) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db.insert(ghostAudits).values({
+    initiatedBy: data.initiatedBy,
+    auditTitle: data.auditTitle,
+    targetEntity: data.targetEntity,
+    auditType: data.auditType as any,
+    analystLevel: data.analystLevel as any,
+    pteConfidenceScore: data.pteConfidenceScore ? sql`${data.pteConfidenceScore}` : undefined,
+    status: "initiated",
+  });
+
+  // Increment analyst ghost audit count
+  await incrementAnalystStat(data.initiatedBy, "ghostAuditsInitiated");
+
+  const insertId = (result as any).insertId;
+  if (insertId) {
+    const created = await db
+      .select()
+      .from(ghostAudits)
+      .where(eq(ghostAudits.id, insertId))
+      .limit(1);
+    return created[0];
+  }
+
+  return undefined;
+}
+
+export async function getGhostAuditsByUser(userId: number, limit = 20) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select()
+    .from(ghostAudits)
+    .where(eq(ghostAudits.initiatedBy, userId))
+    .orderBy(desc(ghostAudits.createdAt))
+    .limit(limit);
+}
+
+export async function getGhostAuditById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db
+    .select()
+    .from(ghostAudits)
+    .where(eq(ghostAudits.id, id))
+    .limit(1);
+
+  return result[0];
+}
+
+export async function updateGhostAudit(
+  id: number,
+  data: {
+    status?: "initiated" | "active" | "synthesizing" | "complete" | "archived";
+    findings?: string;
+    evidenceUrls?: string[];
+    publishedToBlackBook?: boolean;
+    completedAt?: Date;
+  }
+) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const updateData: Record<string, unknown> = {};
+  if (data.status !== undefined) updateData.status = data.status;
+  if (data.findings !== undefined) updateData.findings = data.findings;
+  if (data.evidenceUrls !== undefined) updateData.evidenceUrls = JSON.stringify(data.evidenceUrls);
+  if (data.publishedToBlackBook !== undefined) updateData.publishedToBlackBook = data.publishedToBlackBook ? 1 : 0;
+  if (data.completedAt !== undefined) updateData.completedAt = data.completedAt;
+
+  await db.update(ghostAudits).set(updateData).where(eq(ghostAudits.id, id));
+
+  return getGhostAuditById(id);
+}
+
+export async function getRecentGhostAudits(limit = 10) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select()
+    .from(ghostAudits)
+    .where(eq(ghostAudits.publishedToBlackBook, 1))
+    .orderBy(desc(ghostAudits.createdAt))
+    .limit(limit);
+}
+
+// ============================================================================
+// SHADOW BLACK BOOK QUERIES
+// ============================================================================
+
+export async function createBlackBookEntry(data: {
+  auditId?: number;
+  contributorId: number;
+  entryHash: string;
+  previousHash?: string;
+  title: string;
+  content: string;
+  evidenceUrls?: string[];
+  verificationLevel: "1" | "2" | "3";
+  redactionStatus?: "public" | "restricted" | "classified";
+}) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db.insert(shadowBlackBookEntries).values({
+    auditId: data.auditId,
+    contributorId: data.contributorId,
+    entryHash: data.entryHash,
+    previousHash: data.previousHash,
+    title: data.title,
+    content: data.content,
+    evidenceUrls: data.evidenceUrls ? JSON.stringify(data.evidenceUrls) : undefined,
+    verificationLevel: data.verificationLevel as any,
+    redactionStatus: (data.redactionStatus ?? "public") as any,
+  });
+
+  const insertId = (result as any).insertId;
+  if (insertId) {
+    const created = await db
+      .select()
+      .from(shadowBlackBookEntries)
+      .where(eq(shadowBlackBookEntries.id, insertId))
+      .limit(1);
+    return created[0];
+  }
+  return undefined;
+}
+
+export async function getBlackBookEntries(
+  limit = 20,
+  offset = 0,
+  redactionStatus: "public" | "restricted" | "classified" = "public"
+) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select()
+    .from(shadowBlackBookEntries)
+    .where(eq(shadowBlackBookEntries.redactionStatus, redactionStatus as any))
+    .orderBy(desc(shadowBlackBookEntries.publishedAt))
+    .limit(limit)
+    .offset(offset);
+}
+
+export async function getLatestBlackBookHash() {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db
+    .select({ entryHash: shadowBlackBookEntries.entryHash })
+    .from(shadowBlackBookEntries)
+    .orderBy(desc(shadowBlackBookEntries.createdAt))
+    .limit(1);
+
+  return result[0]?.entryHash;
+}
+
+export async function upvoteBlackBookEntry(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  await db
+    .update(shadowBlackBookEntries)
+    .set({ consensusVotes: sql`consensusVotes + 1` })
+    .where(eq(shadowBlackBookEntries.id, id));
 }
 
