@@ -375,13 +375,37 @@
 
 ---
 
-## Bug Fi## Current Work - Public Access & Missions
+## Bug Fi## Current Work - Mission Acceptance & Dashboard
 
-- [x] Fix public share link authentication
-- [x] Create missions database seed script
-- [x] Populate sample missions with locations
-- [x] Wire missions to home page display
-- [x] Test mission acceptance workflow
+### Mission Acceptance System
+- [ ] Create acceptMission tRPC procedure
+- [ ] Create completeMission tRPC procedure
+- [ ] Create getUserMissions tRPC procedure
+- [ ] Wire Accept Mission buttons to procedures
+- [ ] Add mission status tracking (accepted, in-progress, completed)
+- [ ] Implement mission completion verification
+
+### Missions Dashboard
+- [ ] Create MissionsDashboard page component
+- [ ] Display active missions with progress
+- [ ] Show mission details and requirements
+- [ ] Add mission completion form
+- [ ] Implement mission history/completed missions
+- [ ] Add mission filtering and sorting
+
+### UI Refinement
+- [ ] Enhance mission card design
+- [ ] Add mission type icons and colors
+- [ ] Improve difficulty visualization
+- [ ] Add progress indicators
+- [ ] Refine spacing and typography
+
+### Mission Database Expansion
+- [ ] Add 20+ more diverse missions
+- [ ] Include verification requirements
+- [ ] Add mission categories and tags
+- [ ] Populate with real-world scenarios
+- [ ] Add seasonal and limited-time missions
 
 ## Known Issues
 

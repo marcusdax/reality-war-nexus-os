@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { COOKIE_NAME } from "@shared/const";
 import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
-import * as db from "./db";
+import * as db from "./db.ts";
 import { generateSignature } from "./crypto";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { uploadMediaToS3, verifySignature } from "./upload";

@@ -31,6 +31,13 @@ export default function Home() {
     { enabled: isAuthenticated }
   );
 
+  // Mission acceptance mutation
+  const acceptMissionMutation = trpc.missions.accept.useMutation({
+    onSuccess: () => {
+      missionsQuery.refetch();
+    },
+  });
+
   // Get user's current location
   useEffect(() => {
     if (isAuthenticated && navigator.geolocation) {
@@ -248,8 +255,13 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <Button size="sm" className="btn-truth w-full">
-                    Accept Mission
+                  <Button
+                    size="sm"
+                    className="btn-truth w-full"
+                    onClick={() => acceptMissionMutation.mutate({ missionId: mission.id })}
+                    disabled={acceptMissionMutation.isPending}
+                  >
+                    {acceptMissionMutation.isPending ? "Accepting..." : "Accept Mission"}
                   </Button>
                 </Card>
               ))}
