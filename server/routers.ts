@@ -2,9 +2,10 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { COOKIE_NAME } from "@shared/const";
 import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
-import * as db from "./db";
+import * as db from "./db.ts";
 import { generateSignature } from "./crypto";
 import { getSessionCookieOptions } from "./_core/cookies";
+import { uploadMediaToS3, verifySignature } from "./upload";
 
 // ============================================================================
 // MISSION ROUTER
@@ -942,6 +943,48 @@ const territoriesRouter = router({
 });
 
 // ============================================================================
+// MEDIA UPLOAD ROUTER
+// ============================================================================
+
+const mediaRouter = router({
+  uploadMedia: protectedProcedure
+    .input(
+      z.object({
+        mediaData: z.string(),
+        mediaType: z.enum(["video", "audio"]),
+        mimeType: z.string(),
+        latitude: z.number(),
+        longitude: z.number(),
+        timestamp: z.string(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      if (!ctx.user) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "User not authenticated" });
+      }
+
+      try {
+        const buffer = Buffer.from(input.mediaData, "base64");
+        const { url, signature, key } = await uploadMediaToS3(new Uint8Array(buffer), {
+          userId: ctx.user.id,
+          type: input.mediaType,
+          latitude: input.latitude,
+          longitude: input.longitude,
+          timestamp: input.timestamp,
+          mimeType: input.mimeType,
+        });
+        return { url, signature, key };
+      } catch (error) {
+        console.error("Media upload error:", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: error instanceof Error ? error.message : "Upload failed",
+        });
+      }
+    }),
+});
+
+// ============================================================================
 // MAIN ROUTER
 // ============================================================================
 
@@ -964,6 +1007,7 @@ export const appRouter = router({
   territories: territoriesRouter,
   shadowCorps: shadowCorpsRouter,
   admin: adminRouter,
+  media: mediaRouter,
 });
 
 export type AppRouter = typeof appRouter;

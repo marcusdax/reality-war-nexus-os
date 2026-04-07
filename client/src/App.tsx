@@ -6,8 +6,11 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import TerritoryMap from "./pages/TerritoryMap";
+import MagicMomentCapture from "./pages/MagicMomentCapture";
+import PublicMagicMoment from "./pages/PublicMagicMoment";
 import ShadowCorps from "./pages/ShadowCorps";
 import Onboarding from "./pages/Onboarding";
+import { MissionsDashboard } from "./pages/MissionsDashboard";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -16,7 +19,10 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/onboarding" component={Onboarding} />
       <Route path="/map" component={TerritoryMap} />
+      <Route path="/missions" component={MissionsDashboard} />
       <Route path="/shadow-corps" component={ShadowCorps} />
+      <Route path="/capture" component={MagicMomentCapture} />
+      <Route path="/share/:id" component={PublicMagicMoment} />
       <Route path="/404" component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

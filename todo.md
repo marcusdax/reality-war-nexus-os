@@ -375,35 +375,108 @@
 
 ---
 
-## Bug Fixes & Issues
+## Bug Fi## Current Work - Mission Acceptance & Dashboard
 
-- [ ] (None reported yet)
+### Mission Acceptance System
+- [ ] Create acceptMission tRPC procedure
+- [ ] Create completeMission tRPC procedure
+- [ ] Create getUserMissions tRPC procedure
+- [ ] Wire Accept Mission buttons to procedures
+- [ ] Add mission status tracking (accepted, in-progress, completed)
+- [ ] Implement mission completion verification
 
----
+### Missions Dashboard
+- [ ] Create MissionsDashboard page component
+- [ ] Display active missions with progress
+- [ ] Show mission details and requirements
+- [ ] Add mission completion form
+- [ ] Implement mission history/completed missions
+- [ ] Add mission filtering and sorting
 
-## Current Sprint - Immediate Implementation
+### UI Refinement
+- [ ] Enhance mission card design
+- [ ] Add mission type icons and colors
+- [ ] Improve difficulty visualization
+- [ ] Add progress indicators
+- [ ] Refine spacing and typography
 
-### Oath Taking Flow
-- [x] Create OathModal component with confirmation dialog
-- [x] Add tRPC procedure for recording oath in database
-- [x] Wire Take Oath button to trigger modal
-- [x] Add success notification after oath completion
-- [x] Update profile UI to hide oath section after taken
+### Mission Database Expansion
+- [ ] Add 20+ more diverse missions
+- [ ] Include verification requirements
+- [ ] Add mission categories and tags
+- [ ] Populate with real-world scenarios
+- [ ] Add seasonal and limited-time missions
 
-### Territories Database Population
-- [x] Create territories table schema in Drizzle
-- [x] Run database migration
-- [x] Create seed script to populate sample territories
-- [x] Add database query functions for territory retrieval
-- [x] Update TerritoryMap to display populated data
+## Known Issues
 
-### Mission Acceptance Logic
-- [x] Create mission acceptance UI (Accept/Decline buttons)
-- [x] Add tRPC procedure for accepting missions
-- [x] Add tRPC procedure for completing missions
-- [x] Wire mission cards to show acceptance state
-- [x] Add XP and Truth Credit reward logic
-- [x] Display user's active missions
+- [x] Magic Moment capture error when sharing to Reality Stream - mediaUrls handling issue (FIXED)
+- [x] Public share links not accessible to unauthenticated users (FIXING)
+- [ ] Implement real S3 upload instead of blob URLs
+- [ ] Add media type metadata to posts--
+
+## Current Sprint - Mobile Recording & AR Backbone
+
+### Mobile Video/Audio Recording
+- [x] Create MediaRecorder component for iOS/Android
+- [x] Implement video capture with preview
+- [x] Implement audio-only recording option
+- [x] Add recording timer and controls
+- [x] Implement stop/save/discard functionality
+- [x] Add media playback preview
+- [x] Handle browser permissions (camera, microphone)
+- [x] Optimize for mobile devices
+
+### S3 Upload Implementation
+- [x] Create server endpoint for media upload
+- [x] Implement storagePut for S3 storage
+- [x] Generate CDN URLs for uploaded media
+- [x] Store media metadata in database
+- [x] Update MagicMomentCapture to use real upload
+- [x] Add upload error handling and retry logic
+
+### Cryptographic Signing
+- [x] Generate signature with location, timestamp, user ID
+- [x] Store signature in database
+- [x] Create verification endpoint
+- [x] Add signature display in Reality Stream
+- [x] Implement proof-of-capture validation
+
+### Public Share Links
+- [x] Create public share page route
+- [x] Generate shareable URLs for Magic Moments
+- [x] Implement public view without authentication
+- [x] Add share button to posts
+- [x] Create QR code for easy sharing
+
+### PWA Configuration
+- [x] Create manifest.json
+- [x] Configure service worker
+- [x] Add install prompt for mobile
+- [x] Enable offline support
+- [x] Test on iOS and Android
+
+## Previous Sprint - Immediate Implementation
+
+### Maps Migration (Google Maps to Leaflet/OpenStreetMap)
+- [x] Install Leaflet and React-Leaflet dependencies
+- [x] Create new Map component using Leaflet
+- [x] Replace Google Maps component in TerritoryMap
+- [x] Add territory markers with faction colors
+- [x] Implement user location tracking
+- [x] Add map controls (zoom, pan, layer toggle)
+- [x] Remove Google Maps API dependencies
+
+### Reality Stream Social Feed
+- [x] Create post creation form component
+- [x] Add tRPC procedure for creating posts
+- [x] Build post feed display with pagination
+- [x] Create post card component with metadata
+- [x] Implement upvote/downvote system
+- [x] Add comment creation and display
+- [x] Wire feed to home page
+- [x] Add post deletion (for own posts)
+- [x] Implement content moderation flags
+- [x] Add markdown rendering for post content
 
 ## Completed Features
 

@@ -1,0 +1,88 @@
+{
+  "name": "Reality War: Nexus OS",
+  "short_name": "Reality War",
+  "description": "Capture and verify reality through collaborative truth-seeking",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f172a",
+  "theme_color": "#06b6d4",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "screenshots": [
+    {
+      "src": "/screenshot-1.png",
+      "sizes": "540x720",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/screenshot-2.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Capture Magic Moment",
+      "short_name": "Capture",
+      "description": "Record video or audio evidence of reality",
+      "url": "/capture",
+      "icons": [
+        {
+          "src": "/icon-capture.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "View Territory Map",
+      "short_name": "Map",
+      "description": "Explore faction territories and signal strength",
+      "url": "/map",
+      "icons": [
+        {
+          "src": "/icon-map.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "media",
+          "accept": ["video/*", "audio/*", "image/*"]
+        }
+      ]
+    }
+  }
+}

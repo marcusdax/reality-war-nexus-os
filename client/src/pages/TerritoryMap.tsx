@@ -2,9 +2,10 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { MapPin, ArrowLeft, Zap, Users, Shield, Loader2, Radio } from "lucide-react";
+import { MapPin, ArrowLeft, Zap, Users, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import LeafletMap from "@/components/LeafletMap";
 
 const FACTION_CONFIG: Record<string, { label: string; textColor: string; bgColor: string; borderColor: string; barColor: string }> = {
   shadow_corps: {
@@ -116,26 +117,16 @@ export default function TerritoryMap() {
       </header>
 
       <main className="container py-8">
-        {/* Map Placeholder */}
-        <div className="mb-10">
-          <Card className="card-sacred h-72 flex items-center justify-center border-2 border-dashed border-slate-600 relative overflow-hidden">
-            {/* Background grid effect */}
-            <div className="absolute inset-0 opacity-5"
-              style={{
-                backgroundImage: "linear-gradient(#00bcd4 1px, transparent 1px), linear-gradient(90deg, #00bcd4 1px, transparent 1px)",
-                backgroundSize: "40px 40px",
+        {/* Leaflet Map */}
+        <div className="mb-12">
+          <Card className="card-sacred h-96 overflow-hidden">
+            <LeafletMap
+              territories={territories}
+              userLocation={userLocation || undefined}
+              onTerritoryClick={(territory) => {
+                console.log("Territory clicked:", territory);
               }}
             />
-            <div className="text-center relative z-10">
-              <Radio className="w-14 h-14 text-cyan-400/40 mx-auto mb-3" />
-              <p className="text-gray-300 font-medium mb-1">Interactive Nexus Map</p>
-              <p className="text-sm text-gray-500">Real-time territory visualization — coming in Phase 2</p>
-              {userLocation && (
-                <p className="text-xs text-cyan-500/60 mt-2">
-                  Signal lock: {userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}
-                </p>
-              )}
-            </div>
           </Card>
         </div>
 
@@ -192,7 +183,7 @@ export default function TerritoryMap() {
             </div>
           ) : territories.length === 0 ? (
             <div className="text-center py-16">
-              <Radio className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+              <MapPin className="w-12 h-12 text-gray-600 mx-auto mb-3" />
               <p className="text-gray-400">No territories detected in range.</p>
               <p className="text-sm text-gray-500 mt-1">Expand radius or check back after a seed run.</p>
             </div>

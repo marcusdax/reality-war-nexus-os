@@ -1258,3 +1258,25 @@ export async function upvoteBlackBookEntry(id: number) {
     .where(eq(shadowBlackBookEntries.id, id));
 }
 
+
+export async function getUserMissions(
+  userId: number,
+  status?: "accepted" | "completed" | "all"
+) {
+  const db = await getDb();
+  if (!db) return [];
+
+  let whereConditions = [eq(missionAcceptances.userId, userId)];
+
+  if (status === "accepted") {
+    whereConditions.push(eq(missionAcceptances.status, "in_progress"));
+  } else if (status === "completed") {
+    whereConditions.push(eq(missionAcceptances.status, "completed"));
+  }
+
+  return db
+    .select()
+    .from(missionAcceptances)
+    .where(and(...whereConditions))
+    .orderBy(desc(missionAcceptances.acceptedAt));
+}

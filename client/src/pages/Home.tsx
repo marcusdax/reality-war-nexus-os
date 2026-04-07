@@ -4,10 +4,11 @@ import { Card } from "@/components/ui/card";
 import { OathModal } from "@/components/OathModal";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { MapPin, Zap, Users, Shield, ArrowRight, Loader2, Eye, CheckCircle2, Clock } from "lucide-react";
+import { MapPin, Zap, Users, Shield, ArrowRight, Loader2, Eye, CheckCircle2, Clock, Video } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
+import RealityStreamFeed from "@/components/RealityStreamFeed";
 
 const DIFFICULTY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   easy:   { label: "Easy",   color: "text-emerald-400", bg: "bg-emerald-950/40 border-emerald-400/30" },
@@ -43,7 +44,7 @@ export default function Home() {
   });
 
   const acceptMutation = trpc.missions.accept.useMutation({
-    onSuccess: (_data, variables) => {
+    onSuccess: (_data, _variables) => {
       toast.success("Mission accepted! Complete it to earn rewards.");
       myMissionsQuery.refetch();
       setAcceptingId(null);
@@ -230,6 +231,27 @@ export default function Home() {
           </Card>
         ) : null}
 
+        {/* Capture Magic Moment CTA */}
+        <div className="mb-12">
+          <Card
+            className="card-sacred border-l-4 border-cyan-400 bg-gradient-to-r from-cyan-950/30 to-slate-900/50 cursor-pointer hover:border-cyan-400/60 transition-colors"
+            onClick={() => setLocation("/capture")}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center flex-shrink-0">
+                  <Video className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-lg">Capture Magic Moment</h3>
+                  <p className="text-sm text-gray-400">Record video or audio evidence of reality</p>
+                </div>
+              </div>
+              <ArrowRight className="w-5 h-5 text-cyan-400 flex-shrink-0" />
+            </div>
+          </Card>
+        </div>
+
         {/* Active Missions */}
         {myMissionsQuery.data && myMissionsQuery.data.length > 0 && (
           <div className="mb-12">
@@ -361,6 +383,15 @@ export default function Home() {
               <p className="text-gray-400">No missions nearby. Check back soon!</p>
             </div>
           )}
+        </div>
+
+        {/* Reality Stream Feed */}
+        <div className="mb-12">
+          <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+            <Zap className="w-6 h-6 text-cyan-400" />
+            Reality Stream
+          </h3>
+          <RealityStreamFeed />
         </div>
       </main>
 
