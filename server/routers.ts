@@ -52,8 +52,17 @@ const missionRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Mission not found" });
       }
 
+      const alreadyAccepted = await db.hasUserAcceptedMission(ctx.user.id, input.missionId);
+      if (alreadyAccepted) {
+        throw new TRPCError({ code: "CONFLICT", message: "Mission already accepted" });
+      }
+
       return db.acceptMission(ctx.user.id, input.missionId);
     }),
+
+  getMyMissions: protectedProcedure.query(async ({ ctx }) => {
+    return db.getUserActiveMissionsWithDetails(ctx.user.id);
+  }),
 
   submitMagicMoment: protectedProcedure
     .input(
@@ -454,6 +463,48 @@ const profileRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       return db.updateUserProfile(ctx.user.id, input);
+    }),
+
+  completeOnboarding: protectedProcedure
+    .input(
+      z.object({
+        faction: z.enum(["eco", "data", "tech", "shadow"]),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const user = await db.getUserById(ctx.user.id);
+      if (!user) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+      }
+
+      // Set faction
+      await db.updateUserFaction(ctx.user.id, input.faction);
+
+      // Take oath if not already taken
+      if (!user.oathTaken) {
+        await db.updateUserOathStatus(ctx.user.id, true);
+
+        const signature = generateSignature({
+          userId: ctx.user.id,
+          faction: input.faction,
+          action: "onboarding_oath",
+          timestamp: new Date().getTime(),
+        });
+
+        await db.recordTruthCreditTransaction({
+          userId: ctx.user.id,
+          transactionType: "earn_mission",
+          amount: 500,
+          reason: `Joined the ${input.faction.toUpperCase()} faction and took the Shadow Corps oath`,
+          cryptographicSignature: signature,
+        });
+
+        await db.updateUserXP(ctx.user.id, 100);
+        await db.awardBadge(ctx.user.id, `faction_${input.faction}`, `Pledged to the ${input.faction} faction`);
+        await db.awardBadge(ctx.user.id, "shadow_corps_recruit", "Joined the Shadow Corps");
+      }
+
+      return { success: true, faction: input.faction };
     }),
 
   takeOath: protectedProcedure.mutation(async ({ ctx }) => {
@@ -889,6 +940,187 @@ const territoriesRouter = router({
     .query(async () => {
       return db.getTerritoryLeaderboard();
     }),
+
+  capture: protectedProcedure
+    .input(z.object({ territoryId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const user = await db.getUserById(ctx.user.id);
+      if (!user) throw new TRPCError({ code: "UNAUTHORIZED" });
+
+      // Capture points scale with user level (shadow_corps_tier)
+      const tierBonus: Record<string, number> = {
+        civil_observer: 0,
+        safety_sentinel: 5,
+        shadow_analyst: 15,
+      };
+      const capturePoints = 10 + (tierBonus[user.shadowCorpsTier ?? "civil_observer"] ?? 0);
+
+      // Map user's chosen faction to territory faction enum
+      const factionMap: Record<string, string> = {
+        eco: "truth_seekers",
+        data: "truth_seekers",
+        tech: "reality_architects",
+        shadow: "shadow_corps",
+      };
+      const userFaction = (factionMap[(user as any).chosenFaction ?? ""] ?? "neutral") as any;
+
+      const result = await db.captureTerritory(
+        input.territoryId,
+        ctx.user.id,
+        userFaction,
+        capturePoints
+      );
+
+      if ("error" in result && result.error) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: result.error });
+      }
+
+      // Award TC + XP for participation
+      if ("success" in result && result.success) {
+        const tcReward = result.flipped ? 500 : result.eventType === "contest" ? 50 : 25;
+        const xpReward = result.flipped ? 250 : 25;
+        const sig = generateSignature({ userId: ctx.user.id, territoryId: input.territoryId });
+
+        await db.recordTruthCreditTransaction({
+          userId: ctx.user.id,
+          transactionType: "earn_mission",
+          amount: tcReward,
+          reason: result.flipped
+            ? `Territory flip! Captured territory for your faction`
+            : `Territory ${result.eventType}: signal shifted ${result.signalBefore}→${result.signalAfter}`,
+          relatedEntityType: "territory",
+          relatedEntityId: input.territoryId,
+          cryptographicSignature: sig,
+        });
+
+        // Award XP
+        const freshUser = await db.getUserById(ctx.user.id);
+        if (freshUser) {
+          const drizzleDb = await (db as any).getDb?.();
+        }
+      }
+
+      return result;
+    }),
+
+  getCaptureHistory: protectedProcedure
+    .input(z.object({ territoryId: z.number(), limit: z.number().default(20) }))
+    .query(async ({ input }) => {
+      return db.getTerritoryCaptureHistory(input.territoryId, input.limit);
+    }),
+});
+
+// ============================================================================
+// INVESTIGATOR ROUTER
+// ============================================================================
+
+const investigatorRouter = router({
+  placeAnchor: protectedProcedure
+    .input(
+      z.object({
+        latitude: z.number(),
+        longitude: z.number(),
+        anchorType: z.enum([
+          "identity_challenge",
+          "signal_anomaly",
+          "data_inconsistency",
+          "reality_fracture",
+          "convergence_rift",
+        ]),
+        title: z.string().min(3).max(255),
+        description: z.string().optional(),
+        evidenceUrl: z.string().url().optional(),
+        confidenceScore: z.number().min(0).max(1).default(0.5),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const result = await db.placeRealityAnchor({
+        placedBy: ctx.user.id,
+        latitude: input.latitude,
+        longitude: input.longitude,
+        anchorType: input.anchorType,
+        title: input.title,
+        description: input.description,
+        evidenceUrl: input.evidenceUrl,
+        confidenceScore: input.confidenceScore,
+        rewardTruthCredits: 200,
+        rewardXp: 100,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      });
+
+      // Cost: 50TC to place an anchor (skin in the game)
+      const sig = generateSignature({ userId: ctx.user.id, action: "place_anchor" });
+      await db.recordTruthCreditTransaction({
+        userId: ctx.user.id,
+        transactionType: "spend",
+        amount: -50,
+        reason: `Placed Reality Anchor: ${input.title}`,
+        cryptographicSignature: sig,
+      });
+
+      return result;
+    }),
+
+  getNearbyAnchors: protectedProcedure
+    .input(
+      z.object({
+        latitude: z.number(),
+        longitude: z.number(),
+        radiusKm: z.number().default(10),
+      })
+    )
+    .query(async ({ input }) => {
+      return db.getActiveAnchorsNearby(input.latitude, input.longitude, input.radiusKm);
+    }),
+
+  getAnchorById: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      const anchor = await db.getRealityAnchorById(input.id);
+      if (!anchor) throw new TRPCError({ code: "NOT_FOUND" });
+      return anchor;
+    }),
+
+  joinInvestigation: protectedProcedure
+    .input(z.object({ anchorId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      return db.investigateAnchor(input.anchorId, ctx.user.id);
+    }),
+
+  submitVerdict: protectedProcedure
+    .input(
+      z.object({
+        anchorId: z.number(),
+        verdict: z.enum(["confirmed", "debunked", "inconclusive"]),
+        notes: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const result = await db.submitAnchorVerdict(
+        input.anchorId,
+        ctx.user.id,
+        input.verdict,
+        input.notes
+      );
+
+      if (result?.submitted) {
+        // Award TC + XP for submitting a verdict
+        const sig = generateSignature({ userId: ctx.user.id, anchorId: input.anchorId });
+        await db.recordTruthCreditTransaction({
+          userId: ctx.user.id,
+          transactionType: "earn_mission",
+          amount: 100,
+          reason: `Verdict submitted on Reality Anchor (${input.verdict})`,
+          cryptographicSignature: sig,
+        });
+      }
+
+      return result;
+    }),
+
+  getMyAnchors: protectedProcedure.query(async ({ ctx }) => {
+    return db.getUserAnchors(ctx.user.id);
+  }),
 });
 
 // ============================================================================
@@ -954,6 +1186,7 @@ export const appRouter = router({
   realityStream: realityStreamRouter,
   profile: profileRouter,
   territories: territoriesRouter,
+  investigator: investigatorRouter,
   shadowCorps: shadowCorpsRouter,
   admin: adminRouter,
   media: mediaRouter,

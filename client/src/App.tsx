@@ -9,6 +9,7 @@ import TerritoryMap from "./pages/TerritoryMap";
 import MagicMomentCapture from "./pages/MagicMomentCapture";
 import PublicMagicMoment from "./pages/PublicMagicMoment";
 import ShadowCorps from "./pages/ShadowCorps";
+import Onboarding from "./pages/Onboarding";
 import { MissionsDashboard } from "./pages/MissionsDashboard";
 
 function Router() {
@@ -16,6 +17,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/onboarding" component={Onboarding} />
       <Route path="/map" component={TerritoryMap} />
       <Route path="/missions" component={MissionsDashboard} />
       <Route path="/shadow-corps" component={ShadowCorps} />

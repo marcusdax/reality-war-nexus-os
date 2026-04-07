@@ -11,6 +11,7 @@ export const users = mysqlTable("users", {
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  chosenFaction: mysqlEnum("chosenFaction", ["eco", "data", "tech", "shadow"]),
   shadowCorpsTier: mysqlEnum("shadowCorpsTier", ["recruit", "analyst", "sentinel", "architect", "witness"]).default("recruit").notNull(),
   experiencePoints: int("experiencePoints").default(0).notNull(),
   totalTruthCredits: int("totalTruthCredits").default(0).notNull(),
@@ -242,6 +243,89 @@ export const territories = mysqlTable("territories", {
 
 export type Territory = typeof territories.$inferSelect;
 export type InsertTerritory = typeof territories.$inferInsert;
+
+/**
+ * Territory Capture Events: Records each signal-shifting action in a territory.
+ * Tracks faction warfare and determines flip events.
+ */
+export const territoryCaptureEvents = mysqlTable("territory_capture_events", {
+  id: int("id").autoincrement().primaryKey(),
+  territoryId: int("territoryId").notNull(),
+  userId: int("userId").notNull(),
+  faction: mysqlEnum("faction", ["truth_seekers", "reality_architects", "shadow_corps", "neutral"]).notNull(),
+  capturePoints: int("capturePoints").default(10).notNull(),
+  signalBefore: int("signalBefore").notNull(),
+  signalAfter: int("signalAfter").notNull(),
+  eventType: mysqlEnum("eventType", ["reinforce", "contest", "flip", "decay"]).default("reinforce").notNull(),
+  capturedAt: timestamp("capturedAt").defaultNow().notNull(),
+}, (table) => ({
+  territoryIdx: index("idx_capture_territory").on(table.territoryId),
+  userIdx: index("idx_capture_user").on(table.userId),
+  factionIdx: index("idx_capture_faction").on(table.faction),
+  timeIdx: index("idx_capture_time").on(table.capturedAt),
+}));
+
+export type TerritoryCaptureEvent = typeof territoryCaptureEvents.$inferSelect;
+export type InsertTerritoryCaptureEvent = typeof territoryCaptureEvents.$inferInsert;
+
+/**
+ * Reality Anchors: Investigator-placed anomaly detection markers.
+ * Used for the Investigator System — detecting identity spoofs, signal rifts, and data fraud.
+ */
+export const realityAnchors = mysqlTable("reality_anchors", {
+  id: int("id").autoincrement().primaryKey(),
+  placedBy: int("placedBy").notNull(),
+  latitude: decimal("latitude", { precision: 10, scale: 8 }).notNull(),
+  longitude: decimal("longitude", { precision: 11, scale: 8 }).notNull(),
+  anchorType: mysqlEnum("anchorType", [
+    "identity_challenge",
+    "signal_anomaly",
+    "data_inconsistency",
+    "reality_fracture",
+    "convergence_rift",
+  ]).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  evidenceUrl: varchar("evidenceUrl", { length: 1024 }),
+  confidenceScore: decimal("confidenceScore", { precision: 3, scale: 2 }).default("0.50").notNull(),
+  status: mysqlEnum("status", ["active", "investigating", "confirmed", "debunked", "expired"])
+    .default("active")
+    .notNull(),
+  investigatorCount: int("investigatorCount").default(0).notNull(),
+  rewardTruthCredits: int("rewardTruthCredits").default(200).notNull(),
+  rewardXp: int("rewardXp").default(100).notNull(),
+  expiresAt: timestamp("expiresAt"),
+  resolvedAt: timestamp("resolvedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  locationIdx: index("idx_anchor_location").on(table.latitude, table.longitude),
+  statusIdx: index("idx_anchor_status").on(table.status),
+  placedByIdx: index("idx_anchor_placed_by").on(table.placedBy),
+}));
+
+export type RealityAnchor = typeof realityAnchors.$inferSelect;
+export type InsertRealityAnchor = typeof realityAnchors.$inferInsert;
+
+/**
+ * Anchor Investigations: Users contributing to investigating a Reality Anchor.
+ */
+export const anchorInvestigations = mysqlTable("anchor_investigations", {
+  id: int("id").autoincrement().primaryKey(),
+  anchorId: int("anchorId").notNull(),
+  userId: int("userId").notNull(),
+  verdict: mysqlEnum("verdict", ["confirmed", "debunked", "inconclusive"]),
+  notes: text("notes"),
+  evidenceUrl: varchar("evidenceUrl", { length: 1024 }),
+  joinedAt: timestamp("joinedAt").defaultNow().notNull(),
+  verdictAt: timestamp("verdictAt"),
+}, (table) => ({
+  anchorIdx: index("idx_investigation_anchor").on(table.anchorId),
+  userIdx: index("idx_investigation_user").on(table.userId),
+}));
+
+export type AnchorInvestigation = typeof anchorInvestigations.$inferSelect;
+export type InsertAnchorInvestigation = typeof anchorInvestigations.$inferInsert;
 
 /**
  * Shadow Analyst Profiles: Extended profiles for Level 1-3 Shadow Corps analysts.

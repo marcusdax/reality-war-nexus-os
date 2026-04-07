@@ -14,6 +14,9 @@ import {
   postComments,
   missionAcceptances,
   territories,
+  territoryCaptureEvents,
+  realityAnchors,
+  anchorInvestigations,
   shadowAnalystProfiles,
   ghostAudits,
   shadowBlackBookEntries,
@@ -713,6 +716,58 @@ export async function getUserActiveMissions(userId: number) {
     );
 }
 
+export async function getUserActiveMissionsWithDetails(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const rows = await db
+    .select({
+      acceptanceId: missionAcceptances.id,
+      acceptedAt: missionAcceptances.acceptedAt,
+      completedAt: missionAcceptances.completedAt,
+      acceptanceStatus: missionAcceptances.status,
+      missionId: missions.id,
+      title: missions.title,
+      description: missions.description,
+      missionType: missions.missionType,
+      difficulty: missions.difficulty,
+      rewardTruthCredits: missions.rewardTruthCredits,
+      rewardXp: missions.rewardXp,
+      validationCriteria: missions.validationCriteria,
+      locationLatitude: missions.locationLatitude,
+      locationLongitude: missions.locationLongitude,
+    })
+    .from(missionAcceptances)
+    .innerJoin(missions, eq(missionAcceptances.missionId, missions.id))
+    .where(
+      and(
+        eq(missionAcceptances.userId, userId),
+        eq(missionAcceptances.status, "in_progress")
+      )
+    )
+    .orderBy(missionAcceptances.acceptedAt);
+
+  return rows;
+}
+
+export async function hasUserAcceptedMission(userId: number, missionId: number) {
+  const db = await getDb();
+  if (!db) return false;
+
+  const rows = await db
+    .select({ id: missionAcceptances.id })
+    .from(missionAcceptances)
+    .where(
+      and(
+        eq(missionAcceptances.userId, userId),
+        eq(missionAcceptances.missionId, missionId)
+      )
+    )
+    .limit(1);
+
+  return rows.length > 0;
+}
+
 export async function completeMission(
   userId: number,
   missionId: number,
@@ -875,8 +930,356 @@ export async function getTerritoryLeaderboard(limit: number = 10) {
 
 
 // ============================================================================
+// TERRITORY CAPTURE & SIGNAL DECAY
+// ============================================================================
+
+const FACTION_VALUES = ["truth_seekers", "reality_architects", "shadow_corps", "neutral"] as const;
+type TerritoryFaction = typeof FACTION_VALUES[number];
+
+// Base capture points per action; modified by user level in the router
+const BASE_CAPTURE_POINTS = 10;
+// 1 hour cooldown per user per territory
+const CAPTURE_COOLDOWN_MS = 60 * 60 * 1000;
+
+export async function getLastCaptureEvent(userId: number, territoryId: number) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const rows = await db
+    .select()
+    .from(territoryCaptureEvents)
+    .where(
+      and(
+        eq(territoryCaptureEvents.userId, userId),
+        eq(territoryCaptureEvents.territoryId, territoryId)
+      )
+    )
+    .orderBy(desc(territoryCaptureEvents.capturedAt))
+    .limit(1);
+
+  return rows[0] ?? null;
+}
+
+export async function captureTerritory(
+  territoryId: number,
+  userId: number,
+  userFaction: TerritoryFaction,
+  capturePoints: number = BASE_CAPTURE_POINTS
+) {
+  const db = await getDb();
+  if (!db) return { error: "Database unavailable" };
+
+  const territory = await getTerritoryById(territoryId);
+  if (!territory) return { error: "Territory not found" };
+
+  // Check cooldown
+  const lastEvent = await getLastCaptureEvent(userId, territoryId);
+  if (lastEvent) {
+    const elapsed = Date.now() - new Date(lastEvent.capturedAt).getTime();
+    if (elapsed < CAPTURE_COOLDOWN_MS) {
+      const remaining = Math.ceil((CAPTURE_COOLDOWN_MS - elapsed) / 60000);
+      return { error: `Cooldown active — ${remaining} minutes remaining` };
+    }
+  }
+
+  const signalBefore = territory.signalStrength;
+  let signalAfter: number;
+  let eventType: "reinforce" | "contest" | "flip" | "decay";
+  let newFaction = territory.faction;
+
+  if (userFaction === territory.faction) {
+    // Reinforce: boost signal
+    signalAfter = Math.min(100, signalBefore + capturePoints);
+    eventType = "reinforce";
+  } else {
+    // Contest: drain signal; if it hits 0 → faction flip
+    signalAfter = Math.max(0, signalBefore - capturePoints);
+    if (signalAfter === 0) {
+      newFaction = userFaction;
+      signalAfter = 15; // Flip starts at 15% signal
+      eventType = "flip";
+    } else {
+      eventType = "contest";
+    }
+  }
+
+  // Update territory
+  await db
+    .update(territories)
+    .set({
+      signalStrength: signalAfter,
+      faction: newFaction,
+      lastSignalUpdate: new Date(),
+      ...(eventType === "flip" ? { controlledSince: new Date() } : {}),
+    } as any)
+    .where(eq(territories.id, territoryId));
+
+  // Log capture event
+  await db.insert(territoryCaptureEvents).values({
+    territoryId,
+    userId,
+    faction: userFaction,
+    capturePoints,
+    signalBefore,
+    signalAfter,
+    eventType,
+  });
+
+  return {
+    success: true,
+    eventType,
+    signalBefore,
+    signalAfter,
+    newFaction,
+    flipped: eventType === "flip",
+  };
+}
+
+export async function applySignalDecay(territoryId: number) {
+  const db = await getDb();
+  if (!db) return;
+
+  const territory = await getTerritoryById(territoryId);
+  if (!territory) return;
+
+  // Skip if already decayed recently (< 4 hours)
+  if (territory.lastSignalUpdate) {
+    const hoursSinceUpdate =
+      (Date.now() - new Date(territory.lastSignalUpdate).getTime()) / (1000 * 60 * 60);
+    if (hoursSinceUpdate < 4) return;
+  }
+
+  const decayRate = (territory as any).decayRate ?? 5;
+  const newSignal = Math.max(0, territory.signalStrength - decayRate);
+
+  await db
+    .update(territories)
+    .set({ signalStrength: newSignal, lastSignalUpdate: new Date() } as any)
+    .where(eq(territories.id, territoryId));
+
+  // Log the decay
+  await db.insert(territoryCaptureEvents).values({
+    territoryId,
+    userId: 0, // system event
+    faction: territory.faction,
+    capturePoints: -decayRate,
+    signalBefore: territory.signalStrength,
+    signalAfter: newSignal,
+    eventType: "decay",
+  });
+}
+
+export async function getTerritoryCaptureHistory(territoryId: number, limit = 20) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select()
+    .from(territoryCaptureEvents)
+    .where(eq(territoryCaptureEvents.territoryId, territoryId))
+    .orderBy(desc(territoryCaptureEvents.capturedAt))
+    .limit(limit);
+}
+
+// ============================================================================
+// REALITY ANCHORS (INVESTIGATOR SYSTEM)
+// ============================================================================
+
+export async function placeRealityAnchor(data: {
+  placedBy: number;
+  latitude: number;
+  longitude: number;
+  anchorType: "identity_challenge" | "signal_anomaly" | "data_inconsistency" | "reality_fracture" | "convergence_rift";
+  title: string;
+  description?: string;
+  evidenceUrl?: string;
+  confidenceScore?: number;
+  rewardTruthCredits?: number;
+  rewardXp?: number;
+  expiresAt?: Date;
+}) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db.insert(realityAnchors).values({
+    placedBy: data.placedBy,
+    latitude: String(data.latitude),
+    longitude: String(data.longitude),
+    anchorType: data.anchorType,
+    title: data.title,
+    description: data.description,
+    evidenceUrl: data.evidenceUrl,
+    confidenceScore: String(data.confidenceScore ?? 0.5),
+    rewardTruthCredits: data.rewardTruthCredits ?? 200,
+    rewardXp: data.rewardXp ?? 100,
+    expiresAt: data.expiresAt,
+  } as any);
+
+  return result;
+}
+
+export async function getActiveAnchorsNearby(
+  latitude: number,
+  longitude: number,
+  radiusKm = 10
+) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const all = await db
+    .select()
+    .from(realityAnchors)
+    .where(eq(realityAnchors.status, "active"));
+
+  return all.filter((a) => {
+    const lat1 = Number(a.latitude);
+    const lon1 = Number(a.longitude);
+    const dLat = ((latitude - lat1) * Math.PI) / 180;
+    const dLon = ((longitude - lon1) * Math.PI) / 180;
+    const sinDLat = Math.sin(dLat / 2);
+    const sinDLon = Math.sin(dLon / 2);
+    const aVal =
+      sinDLat * sinDLat +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((latitude * Math.PI) / 180) *
+        sinDLon *
+        sinDLon;
+    const dist = 6371 * 2 * Math.atan2(Math.sqrt(aVal), Math.sqrt(1 - aVal));
+    return dist <= radiusKm;
+  });
+}
+
+export async function getRealityAnchorById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const rows = await db
+    .select()
+    .from(realityAnchors)
+    .where(eq(realityAnchors.id, id))
+    .limit(1);
+
+  return rows[0];
+}
+
+export async function investigateAnchor(anchorId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  // Check not already investigating
+  const existing = await db
+    .select()
+    .from(anchorInvestigations)
+    .where(
+      and(
+        eq(anchorInvestigations.anchorId, anchorId),
+        eq(anchorInvestigations.userId, userId)
+      )
+    )
+    .limit(1);
+
+  if (existing.length > 0) return { alreadyJoined: true };
+
+  await db.insert(anchorInvestigations).values({ anchorId, userId });
+
+  // Bump investigator count + advance status if threshold reached
+  const anchor = await getRealityAnchorById(anchorId);
+  if (anchor) {
+    const newCount = anchor.investigatorCount + 1;
+    const newStatus =
+      anchor.status === "active" && newCount >= 3 ? "investigating" : anchor.status;
+
+    await db
+      .update(realityAnchors)
+      .set({ investigatorCount: newCount, status: newStatus } as any)
+      .where(eq(realityAnchors.id, anchorId));
+  }
+
+  return { joined: true };
+}
+
+export async function submitAnchorVerdict(
+  anchorId: number,
+  userId: number,
+  verdict: "confirmed" | "debunked" | "inconclusive",
+  notes?: string
+) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  await db
+    .update(anchorInvestigations)
+    .set({ verdict, notes, verdictAt: new Date() })
+    .where(
+      and(
+        eq(anchorInvestigations.anchorId, anchorId),
+        eq(anchorInvestigations.userId, userId)
+      )
+    );
+
+  // Tally verdicts and resolve the anchor if consensus reached
+  const allVerdicts = await db
+    .select()
+    .from(anchorInvestigations)
+    .where(
+      and(
+        eq(anchorInvestigations.anchorId, anchorId),
+        sql`${anchorInvestigations.verdict} IS NOT NULL`
+      )
+    );
+
+  if (allVerdicts.length >= 3) {
+    const confirmed = allVerdicts.filter((v) => v.verdict === "confirmed").length;
+    const debunked = allVerdicts.filter((v) => v.verdict === "debunked").length;
+    if (confirmed > debunked) {
+      await db
+        .update(realityAnchors)
+        .set({ status: "confirmed", resolvedAt: new Date() } as any)
+        .where(eq(realityAnchors.id, anchorId));
+    } else if (debunked > confirmed) {
+      await db
+        .update(realityAnchors)
+        .set({ status: "debunked", resolvedAt: new Date() } as any)
+        .where(eq(realityAnchors.id, anchorId));
+    }
+  }
+
+  return { submitted: true };
+}
+
+export async function getUserAnchors(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select()
+    .from(realityAnchors)
+    .where(eq(realityAnchors.placedBy, userId))
+    .orderBy(desc(realityAnchors.createdAt));
+}
+
+// ============================================================================
 // USER OATH & XP UPDATES
 // ============================================================================
+
+export async function updateUserFaction(
+  userId: number,
+  faction: "eco" | "data" | "tech" | "shadow"
+) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  try {
+    await db
+      .update(users)
+      .set({ chosenFaction: faction } as any)
+      .where(eq(users.id, userId));
+    return { success: true };
+  } catch (error) {
+    console.error("[Database] Failed to update faction:", error);
+    throw error;
+  }
+}
 
 export async function updateUserOathStatus(userId: number, oathTaken: boolean) {
   const db = await getDb();
