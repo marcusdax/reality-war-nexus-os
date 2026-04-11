@@ -8,6 +8,8 @@ import { useLocation } from "wouter";
 import LeafletMap from "@/components/LeafletMap";
 import { TerritoryCapture } from "@/components/TerritoryCapture";
 import { RealityAnchorPanel } from "@/components/RealityAnchorPanel";
+import { BattleEventPanel } from "@/components/BattleEventPanel";
+import { DuelPanel } from "@/components/DuelPanel";
 
 const FACTION_CONFIG: Record<string, { label: string; textColor: string; bgColor: string; borderColor: string; barColor: string }> = {
   shadow_corps: {
@@ -69,6 +71,7 @@ export default function TerritoryMap() {
     id: number; name: string; faction: string; signalStrength: number;
     memberCount: number; description?: string | null; radiusMeters: number;
   }>(null);
+  const [territoryTab, setTerritoryTab] = useState<"capture" | "battle" | "duels">("capture");
 
   const profileQuery = trpc.profile.getProfile.useQuery(
     isAuthenticated ? {} : { userId: undefined },
@@ -140,12 +143,48 @@ export default function TerritoryMap() {
             </div>
           </div>
         </header>
-        <main className="container py-6">
-          <TerritoryCapture
-            territory={selectedTerritory}
-            userFactionLabel={userFactionLabel}
-            onCaptureDone={() => territoriesQuery.refetch()}
-          />
+        <main className="container py-6 space-y-5">
+          {/* Territory sub-tabs */}
+          <div className="flex gap-1 bg-slate-800/50 rounded-lg p-1">
+            {([
+              { id: "capture" as const, label: "Capture" },
+              { id: "battle"  as const, label: "Battle" },
+              { id: "duels"   as const, label: "Duels" },
+            ]).map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => setTerritoryTab(id)}
+                className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  territoryTab === id ? "bg-slate-700 text-white" : "text-gray-400 hover:text-gray-200"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {territoryTab === "capture" && (
+            <TerritoryCapture
+              territory={selectedTerritory}
+              userFactionLabel={userFactionLabel}
+              onCaptureDone={() => territoriesQuery.refetch()}
+            />
+          )}
+          {territoryTab === "battle" && (
+            <BattleEventPanel
+              territoryId={selectedTerritory.id}
+              territoryName={selectedTerritory.name}
+              territoryFaction={selectedTerritory.faction}
+              userFaction={CHOSEN_FACTION_TO_TERRITORY[userChosenFaction] ?? "neutral"}
+            />
+          )}
+          {territoryTab === "duels" && (
+            <DuelPanel
+              territoryId={selectedTerritory.id}
+              territoryName={selectedTerritory.name}
+              userId={profileQuery.data?.id ?? 0}
+            />
+          )}
         </main>
       </div>
     );

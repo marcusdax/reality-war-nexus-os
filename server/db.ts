@@ -17,6 +17,11 @@ import {
   territoryCaptureEvents,
   realityAnchors,
   anchorInvestigations,
+  squads,
+  squadMembers,
+  battleEvents,
+  battleParticipants,
+  duels,
   shadowAnalystProfiles,
   ghostAudits,
   shadowBlackBookEntries,
@@ -1256,6 +1261,441 @@ export async function getUserAnchors(userId: number) {
     .from(realityAnchors)
     .where(eq(realityAnchors.placedBy, userId))
     .orderBy(desc(realityAnchors.createdAt));
+}
+
+// ============================================================================
+// SQUAD SYSTEM
+// ============================================================================
+
+export async function createSquad(data: {
+  name: string;
+  tag: string;
+  faction: "truth_seekers" | "reality_architects" | "shadow_corps" | "neutral";
+  leaderId: number;
+  bio?: string;
+  emblem?: string;
+}) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db.insert(squads).values({
+    name: data.name,
+    tag: data.tag.toUpperCase(),
+    faction: data.faction,
+    leaderId: data.leaderId,
+    bio: data.bio,
+    emblem: data.emblem ?? "⚔",
+  });
+
+  // Auto-add leader as member
+  const insertId = (result as any).insertId ?? (result as any)[0]?.insertId;
+  if (insertId) {
+    await db.insert(squadMembers).values({
+      squadId: insertId,
+      userId: data.leaderId,
+      role: "leader",
+    });
+  }
+
+  return result;
+}
+
+export async function getSquadById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const rows = await db.select().from(squads).where(eq(squads.id, id)).limit(1);
+  return rows[0];
+}
+
+export async function getSquadByTag(tag: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const rows = await db.select().from(squads).where(eq(squads.tag, tag.toUpperCase())).limit(1);
+  return rows[0];
+}
+
+export async function getUserSquad(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const membership = await db
+    .select({ squadId: squadMembers.squadId, role: squadMembers.role })
+    .from(squadMembers)
+    .where(eq(squadMembers.userId, userId))
+    .limit(1);
+
+  if (!membership.length) return null;
+
+  const squad = await getSquadById(membership[0].squadId);
+  return squad ? { ...squad, userRole: membership[0].role } : null;
+}
+
+export async function joinSquad(squadId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return { error: "Database unavailable" };
+
+  // Check existing membership
+  const existing = await db
+    .select()
+    .from(squadMembers)
+    .where(eq(squadMembers.userId, userId))
+    .limit(1);
+  if (existing.length) return { error: "Already in a squad — leave first" };
+
+  await db.insert(squadMembers).values({ squadId, userId, role: "member" });
+  await db.update(squads).set({ memberCount: sql`memberCount + 1` }).where(eq(squads.id, squadId));
+  return { joined: true };
+}
+
+export async function leaveSquad(userId: number) {
+  const db = await getDb();
+  if (!db) return;
+
+  const membership = await db
+    .select()
+    .from(squadMembers)
+    .where(eq(squadMembers.userId, userId))
+    .limit(1);
+
+  if (!membership.length) return;
+
+  const { squadId, role } = membership[0];
+  if (role === "leader") return { error: "Transfer leadership before leaving" };
+
+  await db.delete(squadMembers).where(eq(squadMembers.userId, userId));
+  await db.update(squads).set({ memberCount: sql`GREATEST(1, memberCount - 1)` }).where(eq(squads.id, squadId));
+  return { left: true };
+}
+
+export async function getSquadMembers(squadId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select({
+      id: squadMembers.id,
+      userId: squadMembers.userId,
+      role: squadMembers.role,
+      capturePointsContributed: squadMembers.capturePointsContributed,
+      flipsContributed: squadMembers.flipsContributed,
+      joinedAt: squadMembers.joinedAt,
+      name: users.name,
+      shadowCorpsTier: users.shadowCorpsTier,
+    })
+    .from(squadMembers)
+    .innerJoin(users, eq(squadMembers.userId, users.id))
+    .where(eq(squadMembers.squadId, squadId))
+    .orderBy(squadMembers.role, desc(squadMembers.capturePointsContributed));
+}
+
+export async function getTopSquads(limit = 20) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select()
+    .from(squads)
+    .orderBy(desc(squads.totalCapturePoints), desc(squads.totalFlips))
+    .limit(limit);
+}
+
+// ============================================================================
+// BATTLE EVENTS
+// ============================================================================
+
+export async function declareBattle(data: {
+  territoryId: number;
+  initiatedBy: number;
+  attackingFaction: "truth_seekers" | "reality_architects" | "shadow_corps" | "neutral";
+  defendingFaction: "truth_seekers" | "reality_architects" | "shadow_corps" | "neutral";
+  durationMinutes?: number;
+  tcBuyIn?: number;
+  attackSquadId?: number;
+}) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const startedAt = new Date();
+  const endsAt = new Date(startedAt.getTime() + (data.durationMinutes ?? 30) * 60_000);
+
+  const result = await db.insert(battleEvents).values({
+    territoryId: data.territoryId,
+    initiatedBy: data.initiatedBy,
+    attackingFaction: data.attackingFaction,
+    defendingFaction: data.defendingFaction,
+    attackSquadId: data.attackSquadId,
+    status: "active",
+    durationMinutes: data.durationMinutes ?? 30,
+    tcPot: data.tcBuyIn ?? 0,
+    startedAt,
+    endsAt,
+  });
+
+  return { result, startedAt, endsAt };
+}
+
+export async function getActiveBattleForTerritory(territoryId: number) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const rows = await db
+    .select()
+    .from(battleEvents)
+    .where(and(eq(battleEvents.territoryId, territoryId), eq(battleEvents.status, "active")))
+    .orderBy(desc(battleEvents.createdAt))
+    .limit(1);
+
+  return rows[0] ?? null;
+}
+
+export async function joinBattle(battleId: number, userId: number, faction: "truth_seekers" | "reality_architects" | "shadow_corps" | "neutral") {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const battle = await db.select().from(battleEvents).where(eq(battleEvents.id, battleId)).limit(1);
+  if (!battle.length || battle[0].status !== "active") return { error: "Battle not active" };
+
+  const side: "attack" | "defend" = faction === battle[0].attackingFaction ? "attack" : "defend";
+
+  // Upsert participation
+  const existing = await db
+    .select()
+    .from(battleParticipants)
+    .where(and(eq(battleParticipants.battleId, battleId), eq(battleParticipants.userId, userId)))
+    .limit(1);
+
+  if (!existing.length) {
+    await db.insert(battleParticipants).values({ battleId, userId, faction, side });
+    const countCol = side === "attack" ? battleEvents.attackerCount : battleEvents.defenderCount;
+    await db.update(battleEvents).set({ [side === "attack" ? "attackerCount" : "defenderCount"]: sql`${countCol} + 1` }).where(eq(battleEvents.id, battleId));
+  }
+
+  return { joined: true, side };
+}
+
+export async function addBattlePoints(battleId: number, userId: number, points: number, faction: "truth_seekers" | "reality_architects" | "shadow_corps" | "neutral") {
+  const db = await getDb();
+  if (!db) return;
+
+  const battle = await db.select().from(battleEvents).where(eq(battleEvents.id, battleId)).limit(1);
+  if (!battle.length) return;
+
+  const isAttacker = faction === battle[0].attackingFaction;
+
+  // Update aggregate
+  if (isAttacker) {
+    await db.update(battleEvents).set({ attackPoints: sql`attackPoints + ${points}` }).where(eq(battleEvents.id, battleId));
+  } else {
+    await db.update(battleEvents).set({ defendPoints: sql`defendPoints + ${points}` }).where(eq(battleEvents.id, battleId));
+  }
+
+  // Update participant contribution
+  await db
+    .update(battleParticipants)
+    .set({ pointsContributed: sql`pointsContributed + ${points}`, actionsCount: sql`actionsCount + 1` })
+    .where(and(eq(battleParticipants.battleId, battleId), eq(battleParticipants.userId, userId)));
+}
+
+export async function concludeBattle(battleId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const rows = await db.select().from(battleEvents).where(eq(battleEvents.id, battleId)).limit(1);
+  if (!rows.length) return undefined;
+
+  const battle = rows[0];
+  const winnerFaction = battle.attackPoints > battle.defendPoints
+    ? battle.attackingFaction
+    : battle.attackPoints === battle.defendPoints
+    ? battle.defendingFaction  // defenders win ties
+    : battle.defendingFaction;
+
+  await db
+    .update(battleEvents)
+    .set({ status: "concluded", winnerFaction, concludedAt: new Date() })
+    .where(eq(battleEvents.id, battleId));
+
+  // If attackers won, flip the territory
+  if (winnerFaction === battle.attackingFaction) {
+    await db
+      .update(territories)
+      .set({ faction: battle.attackingFaction, signalStrength: 25, controlledSince: new Date() } as any)
+      .where(eq(territories.id, battle.territoryId));
+  }
+
+  return { battle, winnerFaction, flipped: winnerFaction === battle.attackingFaction };
+}
+
+export async function expireStaleActiveBattles() {
+  const db = await getDb();
+  if (!db) return;
+
+  const stale = await db
+    .select()
+    .from(battleEvents)
+    .where(and(eq(battleEvents.status, "active"), sql`endsAt < NOW()`));
+
+  for (const battle of stale) {
+    await concludeBattle(battle.id);
+  }
+}
+
+export async function getRecentBattles(limit = 20) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select()
+    .from(battleEvents)
+    .orderBy(desc(battleEvents.createdAt))
+    .limit(limit);
+}
+
+// ============================================================================
+// DUEL SYSTEM
+// ============================================================================
+
+export async function createDuel(data: {
+  challengerId: number;
+  challengerFaction: "truth_seekers" | "reality_architects" | "shadow_corps" | "neutral";
+  territoryId: number;
+  tcWager: number;
+  durationMinutes?: number;
+}) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  return db.insert(duels).values({
+    challengerId: data.challengerId,
+    challengerFaction: data.challengerFaction,
+    territoryId: data.territoryId,
+    tcWager: data.tcWager,
+    durationMinutes: data.durationMinutes ?? 60,
+    status: "open",
+  });
+}
+
+export async function acceptDuel(duelId: number, defenderId: number, defenderFaction: "truth_seekers" | "reality_architects" | "shadow_corps" | "neutral") {
+  const db = await getDb();
+  if (!db) return { error: "Database unavailable" };
+
+  const rows = await db.select().from(duels).where(eq(duels.id, duelId)).limit(1);
+  if (!rows.length) return { error: "Duel not found" };
+
+  const duel = rows[0];
+  if (duel.status !== "open") return { error: "Duel no longer open" };
+  if (duel.challengerId === defenderId) return { error: "Cannot accept your own duel" };
+
+  const startedAt = new Date();
+  const endsAt = new Date(startedAt.getTime() + duel.durationMinutes * 60_000);
+
+  await db
+    .update(duels)
+    .set({ defenderId, defenderFaction, status: "active", acceptedAt: new Date(), startedAt, endsAt })
+    .where(eq(duels.id, duelId));
+
+  return { accepted: true, endsAt };
+}
+
+export async function addDuelPoints(duelId: number, userId: number, points: number) {
+  const db = await getDb();
+  if (!db) return;
+
+  const rows = await db.select().from(duels).where(eq(duels.id, duelId)).limit(1);
+  if (!rows.length) return;
+
+  const duel = rows[0];
+  if (duel.challengerId === userId) {
+    await db.update(duels).set({ challengerPoints: sql`challengerPoints + ${points}` }).where(eq(duels.id, duelId));
+  } else if (duel.defenderId === userId) {
+    await db.update(duels).set({ defenderPoints: sql`defenderPoints + ${points}` }).where(eq(duels.id, duelId));
+  }
+}
+
+export async function concludeDuel(duelId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const rows = await db.select().from(duels).where(eq(duels.id, duelId)).limit(1);
+  if (!rows.length) return undefined;
+
+  const duel = rows[0];
+  const winnerId = duel.challengerPoints >= duel.defenderPoints
+    ? duel.challengerId
+    : duel.defenderId!;
+
+  await db
+    .update(duels)
+    .set({ status: "concluded", winnerId, concludedAt: new Date() })
+    .where(eq(duels.id, duelId));
+
+  return { duel, winnerId, challengerWon: winnerId === duel.challengerId };
+}
+
+export async function getOpenDuelsForTerritory(territoryId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select()
+    .from(duels)
+    .where(and(eq(duels.territoryId, territoryId), eq(duels.status, "open")))
+    .orderBy(desc(duels.createdAt));
+}
+
+export async function getUserDuels(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select()
+    .from(duels)
+    .where(sql`challengerId = ${userId} OR defenderId = ${userId}`)
+    .orderBy(desc(duels.createdAt))
+    .limit(20);
+}
+
+// ============================================================================
+// BATTLE LEADERBOARD
+// ============================================================================
+
+export async function getBattleLeaderboard(limit = 20) {
+  const db = await getDb();
+  if (!db) return [];
+
+  // Aggregate stats per user from territory_capture_events
+  const rows = await db.execute(sql`
+    SELECT
+      tce.userId,
+      u.name,
+      u.shadowCorpsTier,
+      COUNT(tce.id) AS totalActions,
+      SUM(tce.capturePoints) AS totalPoints,
+      SUM(CASE WHEN tce.eventType = 'flip' THEN 1 ELSE 0 END) AS totalFlips,
+      SUM(CASE WHEN tce.eventType = 'contest' THEN 1 ELSE 0 END) AS totalContests,
+      SUM(CASE WHEN tce.eventType = 'reinforce' THEN 1 ELSE 0 END) AS totalReinforces,
+      MAX(tce.capturedAt) AS lastActive
+    FROM territory_capture_events tce
+    JOIN users u ON u.id = tce.userId
+    WHERE tce.userId > 0
+    GROUP BY tce.userId, u.name, u.shadowCorpsTier
+    ORDER BY totalPoints DESC, totalFlips DESC
+    LIMIT ${limit}
+  `);
+
+  return (rows as any)[0] as Array<{
+    userId: number;
+    name: string;
+    shadowCorpsTier: string;
+    totalActions: number;
+    totalPoints: number;
+    totalFlips: number;
+    totalContests: number;
+    totalReinforces: number;
+    lastActive: string;
+  }>;
 }
 
 // ============================================================================

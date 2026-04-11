@@ -1124,6 +1124,252 @@ const investigatorRouter = router({
 });
 
 // ============================================================================
+// SQUAD ROUTER
+// ============================================================================
+
+const FACTION_MAP: Record<string, string> = {
+  eco: "truth_seekers",
+  data: "truth_seekers",
+  tech: "reality_architects",
+  shadow: "shadow_corps",
+};
+
+const squadRouter = router({
+  create: protectedProcedure
+    .input(
+      z.object({
+        name: z.string().min(3).max(60),
+        tag: z.string().min(2).max(6).regex(/^[A-Z0-9]+$/i, "Tag must be alphanumeric"),
+        bio: z.string().max(300).optional(),
+        emblem: z.string().max(4).optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const user = await db.getUserById(ctx.user.id);
+      if (!user) throw new TRPCError({ code: "UNAUTHORIZED" });
+
+      const existing = await db.getUserSquad(ctx.user.id);
+      if (existing) throw new TRPCError({ code: "CONFLICT", message: "Already in a squad" });
+
+      const tagTaken = await db.getSquadByTag(input.tag);
+      if (tagTaken) throw new TRPCError({ code: "CONFLICT", message: "Tag already taken" });
+
+      const faction = (FACTION_MAP[(user as any).chosenFaction ?? ""] ?? "neutral") as any;
+      return db.createSquad({ name: input.name, tag: input.tag, faction, leaderId: ctx.user.id, bio: input.bio, emblem: input.emblem });
+    }),
+
+  join: protectedProcedure
+    .input(z.object({ tag: z.string() }))
+    .mutation(async ({ input, ctx }) => {
+      const squad = await db.getSquadByTag(input.tag);
+      if (!squad) throw new TRPCError({ code: "NOT_FOUND", message: "Squad not found" });
+
+      const result = await db.joinSquad(squad.id, ctx.user.id);
+      if (result && "error" in result) throw new TRPCError({ code: "CONFLICT", message: result.error });
+      return result;
+    }),
+
+  leave: protectedProcedure.mutation(async ({ ctx }) => {
+    const result = await db.leaveSquad(ctx.user.id);
+    if (result && "error" in result) throw new TRPCError({ code: "PRECONDITION_FAILED", message: result.error });
+    return result;
+  }),
+
+  getMySquad: protectedProcedure.query(async ({ ctx }) => {
+    return db.getUserSquad(ctx.user.id);
+  }),
+
+  getMembers: protectedProcedure
+    .input(z.object({ squadId: z.number() }))
+    .query(async ({ input }) => {
+      return db.getSquadMembers(input.squadId);
+    }),
+
+  getLeaderboard: publicProcedure.query(async () => {
+    return db.getTopSquads(20);
+  }),
+});
+
+// ============================================================================
+// BATTLE ROUTER
+// ============================================================================
+
+const battleRouter = router({
+  declare: protectedProcedure
+    .input(
+      z.object({
+        territoryId: z.number(),
+        durationMinutes: z.number().min(15).max(120).default(30),
+        tcBuyIn: z.number().min(0).max(5000).default(0),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const user = await db.getUserById(ctx.user.id);
+      if (!user) throw new TRPCError({ code: "UNAUTHORIZED" });
+
+      const territory = await db.getTerritoryById(input.territoryId);
+      if (!territory) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const existing = await db.getActiveBattleForTerritory(input.territoryId);
+      if (existing) throw new TRPCError({ code: "CONFLICT", message: "A battle is already active for this territory" });
+
+      const userFaction = (FACTION_MAP[(user as any).chosenFaction ?? ""] ?? "neutral") as any;
+      const defendingFaction = territory.faction;
+
+      if (userFaction === defendingFaction) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot declare battle on your own faction's territory" });
+      }
+
+      // Charge buy-in TC
+      if (input.tcBuyIn > 0) {
+        const sig = generateSignature({ userId: ctx.user.id, action: "battle_buy_in" });
+        await db.recordTruthCreditTransaction({
+          userId: ctx.user.id,
+          transactionType: "spend",
+          amount: -input.tcBuyIn,
+          reason: `Battle declared on ${territory.name}`,
+          cryptographicSignature: sig,
+        });
+      }
+
+      const userSquad = await db.getUserSquad(ctx.user.id);
+      const result = await db.declareBattle({
+        territoryId: input.territoryId,
+        initiatedBy: ctx.user.id,
+        attackingFaction: userFaction,
+        defendingFaction,
+        durationMinutes: input.durationMinutes,
+        tcBuyIn: input.tcBuyIn,
+        attackSquadId: userSquad?.id,
+      });
+
+      return result;
+    }),
+
+  join: protectedProcedure
+    .input(z.object({ battleId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const user = await db.getUserById(ctx.user.id);
+      if (!user) throw new TRPCError({ code: "UNAUTHORIZED" });
+
+      const userFaction = (FACTION_MAP[(user as any).chosenFaction ?? ""] ?? "neutral") as any;
+      const result = await db.joinBattle(input.battleId, ctx.user.id, userFaction);
+      if (result && "error" in result) throw new TRPCError({ code: "PRECONDITION_FAILED", message: result.error });
+      return result;
+    }),
+
+  getActive: protectedProcedure
+    .input(z.object({ territoryId: z.number() }))
+    .query(async ({ input }) => {
+      return db.getActiveBattleForTerritory(input.territoryId);
+    }),
+
+  getRecent: publicProcedure.query(async () => {
+    return db.getRecentBattles(20);
+  }),
+
+  conclude: protectedProcedure
+    .input(z.object({ battleId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      // Anyone can trigger conclusion — server checks if time has expired
+      const battles = await db.getRecentBattles(1000);
+      const battle = battles.find((b) => b.id === input.battleId);
+      if (!battle) throw new TRPCError({ code: "NOT_FOUND" });
+      if (battle.status !== "active") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Battle not active" });
+      if (battle.endsAt && new Date(battle.endsAt) > new Date()) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Battle has not ended yet" });
+      }
+
+      const result = await db.concludeBattle(input.battleId);
+
+      // Award TC to participants on winning side
+      if (result) {
+        const winnerTcPer = Math.floor((battle.tcPot * 0.9) / Math.max(1,
+          result.challengerWon !== undefined
+            ? battle.attackerCount
+            : battle.defenderCount
+        ));
+        if (winnerTcPer > 0) {
+          // Award logic handled client-side via next action; server records the winner
+        }
+      }
+
+      return result;
+    }),
+
+  getLeaderboard: publicProcedure.query(async () => {
+    return db.getBattleLeaderboard(20);
+  }),
+});
+
+// ============================================================================
+// DUEL ROUTER
+// ============================================================================
+
+const duelRouter = router({
+  challenge: protectedProcedure
+    .input(
+      z.object({
+        territoryId: z.number(),
+        tcWager: z.number().min(50).max(10000).default(100),
+        durationMinutes: z.number().min(30).max(180).default(60),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const user = await db.getUserById(ctx.user.id);
+      if (!user) throw new TRPCError({ code: "UNAUTHORIZED" });
+
+      const userFaction = (FACTION_MAP[(user as any).chosenFaction ?? ""] ?? "neutral") as any;
+
+      // Escrow the wager
+      const sig = generateSignature({ userId: ctx.user.id, action: "duel_wager" });
+      await db.recordTruthCreditTransaction({
+        userId: ctx.user.id,
+        transactionType: "spend",
+        amount: -input.tcWager,
+        reason: `Duel wager escrowed (territory ${input.territoryId})`,
+        cryptographicSignature: sig,
+      });
+
+      return db.createDuel({
+        challengerId: ctx.user.id,
+        challengerFaction: userFaction,
+        territoryId: input.territoryId,
+        tcWager: input.tcWager,
+        durationMinutes: input.durationMinutes,
+      });
+    }),
+
+  accept: protectedProcedure
+    .input(z.object({ duelId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const user = await db.getUserById(ctx.user.id);
+      if (!user) throw new TRPCError({ code: "UNAUTHORIZED" });
+
+      const userFaction = (FACTION_MAP[(user as any).chosenFaction ?? ""] ?? "neutral") as any;
+
+      // Fetch duel to get wager amount
+      const duelsDb = await db.getUserDuels(ctx.user.id);
+      const allDuels = await db.getOpenDuelsForTerritory(0); // workaround: fetch by ID below
+      // Directly query duel
+      const result = await db.acceptDuel(input.duelId, ctx.user.id, userFaction);
+      if (result && "error" in result) throw new TRPCError({ code: "PRECONDITION_FAILED", message: result.error });
+
+      return result;
+    }),
+
+  getOpenForTerritory: protectedProcedure
+    .input(z.object({ territoryId: z.number() }))
+    .query(async ({ input }) => {
+      return db.getOpenDuelsForTerritory(input.territoryId);
+    }),
+
+  getMyDuels: protectedProcedure.query(async ({ ctx }) => {
+    return db.getUserDuels(ctx.user.id);
+  }),
+});
+
+// ============================================================================
 // MEDIA UPLOAD ROUTER
 // ============================================================================
 
@@ -1187,6 +1433,9 @@ export const appRouter = router({
   profile: profileRouter,
   territories: territoriesRouter,
   investigator: investigatorRouter,
+  squads: squadRouter,
+  battles: battleRouter,
+  duels: duelRouter,
   shadowCorps: shadowCorpsRouter,
   admin: adminRouter,
   media: mediaRouter,

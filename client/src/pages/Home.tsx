@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { OathModal } from "@/components/OathModal";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { MapPin, Zap, Users, Shield, ArrowRight, Loader2, Eye, CheckCircle2, Clock, Video } from "lucide-react";
+import { MapPin, Zap, Users, Shield, ArrowRight, Loader2, Eye, CheckCircle2, Clock, Video, Swords } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -230,6 +230,27 @@ export default function Home() {
             </div>
           </Card>
         ) : null}
+
+        {/* Battle Command Nav */}
+        <Card
+          className="card-sacred mb-8 border border-yellow-500/30 bg-gradient-to-r from-yellow-950/20 to-slate-900/50 cursor-pointer hover:border-yellow-500/60 transition-colors"
+          onClick={() => setLocation("/battles")}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-yellow-500 to-orange-600 flex items-center justify-center flex-shrink-0">
+                <Swords className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-sm">Battle Command</h3>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Faction warfare · Squads · Duels · Rankings
+                </p>
+              </div>
+            </div>
+            <ArrowRight className="w-5 h-5 text-yellow-400" />
+          </div>
+        </Card>
 
         {/* Capture Magic Moment CTA */}
         <div className="mb-12">
