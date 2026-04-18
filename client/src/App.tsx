@@ -11,6 +11,7 @@ import PublicMagicMoment from "./pages/PublicMagicMoment";
 import ShadowCorps from "./pages/ShadowCorps";
 import Onboarding from "./pages/Onboarding";
 import { MissionsDashboard } from "./pages/MissionsDashboard";
+import Battles from "./pages/Battles";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -20,6 +21,7 @@ function Router() {
       <Route path="/onboarding" component={Onboarding} />
       <Route path="/map" component={TerritoryMap} />
       <Route path="/missions" component={MissionsDashboard} />
+      <Route path="/battles" component={Battles} />
       <Route path="/shadow-corps" component={ShadowCorps} />
       <Route path="/capture" component={MagicMomentCapture} />
       <Route path="/share/:id" component={PublicMagicMoment} />

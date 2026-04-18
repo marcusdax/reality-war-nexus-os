@@ -327,6 +327,136 @@ export const anchorInvestigations = mysqlTable("anchor_investigations", {
 export type AnchorInvestigation = typeof anchorInvestigations.$inferSelect;
 export type InsertAnchorInvestigation = typeof anchorInvestigations.$inferInsert;
 
+// ============================================================================
+// BATTLE SYSTEM TABLES
+// ============================================================================
+
+/**
+ * Squads: Faction-aligned operative teams for coordinated territory assaults.
+ */
+export const squads = mysqlTable("squads", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 60 }).notNull(),
+  tag: varchar("tag", { length: 6 }).notNull(),
+  faction: mysqlEnum("faction", ["truth_seekers", "reality_architects", "shadow_corps", "neutral"]).notNull(),
+  leaderId: int("leaderId").notNull(),
+  memberCount: int("memberCount").default(1).notNull(),
+  totalCapturePoints: int("totalCapturePoints").default(0).notNull(),
+  totalFlips: int("totalFlips").default(0).notNull(),
+  wins: int("wins").default(0).notNull(),
+  losses: int("losses").default(0).notNull(),
+  bio: text("bio"),
+  emblem: varchar("emblem", { length: 4 }).default("⚔"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  tagIdx: index("idx_squad_tag").on(table.tag),
+  factionIdx: index("idx_squad_faction").on(table.faction),
+  leaderIdx: index("idx_squad_leader").on(table.leaderId),
+}));
+
+export type Squad = typeof squads.$inferSelect;
+export type InsertSquad = typeof squads.$inferInsert;
+
+export const squadMembers = mysqlTable("squad_members", {
+  id: int("id").autoincrement().primaryKey(),
+  squadId: int("squadId").notNull(),
+  userId: int("userId").notNull(),
+  role: mysqlEnum("role", ["leader", "officer", "member"]).default("member").notNull(),
+  capturePointsContributed: int("capturePointsContributed").default(0).notNull(),
+  flipsContributed: int("flipsContributed").default(0).notNull(),
+  joinedAt: timestamp("joinedAt").defaultNow().notNull(),
+}, (table) => ({
+  uniqueMember: index("idx_squad_member_unique").on(table.squadId, table.userId),
+  userIdx: index("idx_squad_member_user").on(table.userId),
+}));
+
+export type SquadMember = typeof squadMembers.$inferSelect;
+export type InsertSquadMember = typeof squadMembers.$inferInsert;
+
+/**
+ * Battle Events: Declared faction assaults on a territory with a live time window.
+ * Attacking vs. defending factions accumulate points from capture actions during the window.
+ */
+export const battleEvents = mysqlTable("battle_events", {
+  id: int("id").autoincrement().primaryKey(),
+  territoryId: int("territoryId").notNull(),
+  initiatedBy: int("initiatedBy").notNull(),
+  attackingFaction: mysqlEnum("attackingFaction", ["truth_seekers", "reality_architects", "shadow_corps", "neutral"]).notNull(),
+  defendingFaction: mysqlEnum("defendingFaction", ["truth_seekers", "reality_architects", "shadow_corps", "neutral"]).notNull(),
+  attackSquadId: int("attackSquadId"),
+  defendSquadId: int("defendSquadId"),
+  status: mysqlEnum("status", ["pending", "active", "concluded", "cancelled"]).default("pending").notNull(),
+  durationMinutes: int("durationMinutes").default(30).notNull(),
+  attackPoints: int("attackPoints").default(0).notNull(),
+  defendPoints: int("defendPoints").default(0).notNull(),
+  attackerCount: int("attackerCount").default(0).notNull(),
+  defenderCount: int("defenderCount").default(0).notNull(),
+  winnerFaction: mysqlEnum("winnerFaction", ["truth_seekers", "reality_architects", "shadow_corps", "neutral"]),
+  tcPot: int("tcPot").default(0).notNull(),
+  startedAt: timestamp("startedAt"),
+  endsAt: timestamp("endsAt"),
+  concludedAt: timestamp("concludedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  territoryIdx: index("idx_battle_territory").on(table.territoryId),
+  statusIdx: index("idx_battle_status").on(table.status),
+  factionsIdx: index("idx_battle_factions").on(table.attackingFaction, table.defendingFaction),
+}));
+
+export type BattleEvent = typeof battleEvents.$inferSelect;
+export type InsertBattleEvent = typeof battleEvents.$inferInsert;
+
+export const battleParticipants = mysqlTable("battle_participants", {
+  id: int("id").autoincrement().primaryKey(),
+  battleId: int("battleId").notNull(),
+  userId: int("userId").notNull(),
+  faction: mysqlEnum("faction", ["truth_seekers", "reality_architects", "shadow_corps", "neutral"]).notNull(),
+  side: mysqlEnum("side", ["attack", "defend"]).notNull(),
+  pointsContributed: int("pointsContributed").default(0).notNull(),
+  actionsCount: int("actionsCount").default(0).notNull(),
+  joinedAt: timestamp("joinedAt").defaultNow().notNull(),
+}, (table) => ({
+  uniqueParticipant: index("idx_battle_participant_unique").on(table.battleId, table.userId),
+  battleIdx: index("idx_battle_participant_battle").on(table.battleId),
+  userIdx: index("idx_battle_participant_user").on(table.userId),
+}));
+
+export type BattleParticipant = typeof battleParticipants.$inferSelect;
+export type InsertBattleParticipant = typeof battleParticipants.$inferInsert;
+
+/**
+ * Duels: 1v1 operative challenges with a TC wager on territory control.
+ * Whoever accumulates more capture points during the duel window wins.
+ */
+export const duels = mysqlTable("duels", {
+  id: int("id").autoincrement().primaryKey(),
+  challengerId: int("challengerId").notNull(),
+  challengerFaction: mysqlEnum("challengerFaction", ["truth_seekers", "reality_architects", "shadow_corps", "neutral"]).notNull(),
+  defenderId: int("defenderId"),
+  defenderFaction: mysqlEnum("defenderFaction", ["truth_seekers", "reality_architects", "shadow_corps", "neutral"]),
+  territoryId: int("territoryId").notNull(),
+  tcWager: int("tcWager").default(100).notNull(),
+  durationMinutes: int("durationMinutes").default(60).notNull(),
+  status: mysqlEnum("status", ["open", "accepted", "active", "concluded", "cancelled", "expired"]).default("open").notNull(),
+  challengerPoints: int("challengerPoints").default(0).notNull(),
+  defenderPoints: int("defenderPoints").default(0).notNull(),
+  winnerId: int("winnerId"),
+  acceptedAt: timestamp("acceptedAt"),
+  startedAt: timestamp("startedAt"),
+  endsAt: timestamp("endsAt"),
+  concludedAt: timestamp("concludedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  challengerIdx: index("idx_duel_challenger").on(table.challengerId),
+  defenderIdx: index("idx_duel_defender").on(table.defenderId),
+  territoryIdx: index("idx_duel_territory").on(table.territoryId),
+  statusIdx: index("idx_duel_status").on(table.status),
+}));
+
+export type Duel = typeof duels.$inferSelect;
+export type InsertDuel = typeof duels.$inferInsert;
+
 /**
  * Shadow Analyst Profiles: Extended profiles for Level 1-3 Shadow Corps analysts.
  * Tracks AiTR score, Rep Score, Crucible progress, and mission statistics.
