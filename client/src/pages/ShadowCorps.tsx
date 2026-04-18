@@ -7,6 +7,7 @@ import { ShadowBlackBook } from "@/components/ShadowBlackBook";
 import { ShadowCorpsCodex } from "@/components/ShadowCorpsCodex";
 import { OperativeDossier } from "@/components/OperativeDossier";
 import { FactionIntelligence } from "@/components/FactionIntelligence";
+import { NexusMindTransmissions } from "@/components/NexusMindTransmissions";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import {
@@ -25,12 +26,13 @@ import {
   Radio,
   Fingerprint,
   Network,
+  Wifi,
 } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 
-type Tab = "overview" | "crucible" | "audits" | "blackbook" | "codex" | "dossier" | "factions";
+type Tab = "overview" | "crucible" | "audits" | "blackbook" | "codex" | "dossier" | "factions" | "transmissions";
 
 const LEVEL_INFO = {
   "1": {
@@ -293,6 +295,7 @@ export default function ShadowCorps() {
             <div className="flex gap-1 mb-6 bg-slate-800/30 p-1 rounded-lg border border-slate-700/50">
               {(
                 [
+                  { id: "transmissions", label: "Signals", icon: Wifi },
                   { id: "codex", label: "Codex", icon: Radio },
                   { id: "factions", label: "Factions", icon: Network },
                   { id: "dossier", label: "Dossier", icon: Fingerprint },
@@ -462,6 +465,10 @@ export default function ShadowCorps() {
 
             {activeTab === "blackbook" && (
               <ShadowBlackBook analystLevel={analystLevel} />
+            )}
+
+            {activeTab === "transmissions" && (
+              <NexusMindTransmissions analystLevel={analystLevel} />
             )}
 
             {activeTab === "codex" && (
