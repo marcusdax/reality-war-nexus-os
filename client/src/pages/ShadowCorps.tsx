@@ -4,6 +4,8 @@ import { Card } from "@/components/ui/card";
 import { CrucibleProgress } from "@/components/CrucibleProgress";
 import { GhostAuditPanel } from "@/components/GhostAuditPanel";
 import { ShadowBlackBook } from "@/components/ShadowBlackBook";
+import { ShadowCorpsCodex } from "@/components/ShadowCorpsCodex";
+import { OperativeDossier } from "@/components/OperativeDossier";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import {
@@ -19,12 +21,14 @@ import {
   Eye,
   BookOpen,
   RefreshCw,
+  Radio,
+  Fingerprint,
 } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 
-type Tab = "overview" | "crucible" | "audits" | "blackbook";
+type Tab = "overview" | "crucible" | "audits" | "blackbook" | "codex" | "dossier";
 
 const LEVEL_INFO = {
   "1": {
@@ -259,23 +263,45 @@ export default function ShadowCorps() {
               </div>
             )}
 
-            {/* Tabs */}
-            <div className="flex gap-1 mb-6 bg-slate-800/50 p-1 rounded-lg border border-slate-700">
+            {/* Tabs — row 1 */}
+            <div className="flex gap-1 mb-1 bg-slate-800/50 p-1 rounded-lg border border-slate-700">
               {(
                 [
                   { id: "overview", label: "Overview", icon: Activity },
                   { id: "crucible", label: "Crucible", icon: Zap },
-                  { id: "audits", label: "Ghost Audits", icon: Eye },
+                  { id: "audits", label: "Audits", icon: Eye },
                   { id: "blackbook", label: "Black Book", icon: BookOpen },
                 ] as { id: Tab; label: string; icon: React.FC<any> }[]
               ).map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
                   onClick={() => setActiveTab(id)}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-md text-sm font-medium transition-colors ${
                     activeTab === id
                       ? "bg-slate-700 text-white"
                       : "text-gray-500 hover:text-gray-300"
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5 hidden sm:block" />
+                  <span className="truncate">{label}</span>
+                </button>
+              ))}
+            </div>
+            {/* Tabs — row 2 (lore) */}
+            <div className="flex gap-1 mb-6 bg-slate-800/30 p-1 rounded-lg border border-slate-700/50">
+              {(
+                [
+                  { id: "codex", label: "Codex", icon: Radio },
+                  { id: "dossier", label: "Dossier", icon: Fingerprint },
+                ] as { id: Tab; label: string; icon: React.FC<any> }[]
+              ).map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setActiveTab(id)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-sm font-medium transition-colors ${
+                    activeTab === id
+                      ? "bg-slate-700 text-fuchsia-300"
+                      : "text-gray-600 hover:text-gray-400"
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5 hidden sm:block" />
@@ -433,6 +459,14 @@ export default function ShadowCorps() {
 
             {activeTab === "blackbook" && (
               <ShadowBlackBook analystLevel={analystLevel} />
+            )}
+
+            {activeTab === "codex" && (
+              <ShadowCorpsCodex analystLevel={analystLevel} />
+            )}
+
+            {activeTab === "dossier" && (
+              <OperativeDossier analystLevel={analystLevel} />
             )}
           </>
         )}
