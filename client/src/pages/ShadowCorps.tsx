@@ -6,6 +6,7 @@ import { GhostAuditPanel } from "@/components/GhostAuditPanel";
 import { ShadowBlackBook } from "@/components/ShadowBlackBook";
 import { ShadowCorpsCodex } from "@/components/ShadowCorpsCodex";
 import { OperativeDossier } from "@/components/OperativeDossier";
+import { FactionIntelligence } from "@/components/FactionIntelligence";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import {
@@ -23,12 +24,13 @@ import {
   RefreshCw,
   Radio,
   Fingerprint,
+  Network,
 } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 
-type Tab = "overview" | "crucible" | "audits" | "blackbook" | "codex" | "dossier";
+type Tab = "overview" | "crucible" | "audits" | "blackbook" | "codex" | "dossier" | "factions";
 
 const LEVEL_INFO = {
   "1": {
@@ -292,6 +294,7 @@ export default function ShadowCorps() {
               {(
                 [
                   { id: "codex", label: "Codex", icon: Radio },
+                  { id: "factions", label: "Factions", icon: Network },
                   { id: "dossier", label: "Dossier", icon: Fingerprint },
                 ] as { id: Tab; label: string; icon: React.FC<any> }[]
               ).map(({ id, label, icon: Icon }) => (
@@ -463,6 +466,10 @@ export default function ShadowCorps() {
 
             {activeTab === "codex" && (
               <ShadowCorpsCodex analystLevel={analystLevel} />
+            )}
+
+            {activeTab === "factions" && (
+              <FactionIntelligence analystLevel={analystLevel} />
             )}
 
             {activeTab === "dossier" && (
