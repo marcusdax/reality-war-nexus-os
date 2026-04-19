@@ -10,6 +10,8 @@ import { FactionIntelligence } from "@/components/FactionIntelligence";
 import { NexusMindTransmissions } from "@/components/NexusMindTransmissions";
 import { SignalChronicle } from "@/components/SignalChronicle";
 import { OperativeLexicon } from "@/components/OperativeLexicon";
+import { FieldReports } from "@/components/FieldReports";
+import { OathTerminal } from "@/components/OathTerminal";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import {
@@ -31,12 +33,13 @@ import {
   Wifi,
   Clock,
   BookOpen as LexiconIcon,
+  FileText,
 } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 
-type Tab = "overview" | "crucible" | "audits" | "blackbook" | "codex" | "dossier" | "factions" | "transmissions" | "chronicle" | "lexicon";
+type Tab = "overview" | "crucible" | "audits" | "blackbook" | "codex" | "dossier" | "factions" | "transmissions" | "chronicle" | "lexicon" | "reports" | "oath";
 
 const LEVEL_INFO = {
   "1": {
@@ -304,6 +307,8 @@ export default function ShadowCorps() {
                   { id: "factions",      label: "Factions",  icon: Network },
                   { id: "chronicle",     label: "Chronicle", icon: Clock },
                   { id: "lexicon",       label: "Lexicon",   icon: LexiconIcon },
+                  { id: "reports",       label: "Reports",   icon: FileText },
+                  { id: "oath",          label: "Oath",      icon: Lock },
                   { id: "dossier",       label: "Dossier",   icon: Fingerprint },
                 ] as { id: Tab; label: string; icon: React.FC<any> }[]
               ).map(({ id, label, icon: Icon }) => (
@@ -491,6 +496,17 @@ export default function ShadowCorps() {
 
             {activeTab === "lexicon" && (
               <OperativeLexicon />
+            )}
+
+            {activeTab === "reports" && (
+              <FieldReports analystLevel={analystLevel} />
+            )}
+
+            {activeTab === "oath" && (
+              <OathTerminal
+                analystLevel={analystLevel}
+                oathHash={profile?.immutableOathHash ?? null}
+              />
             )}
 
             {activeTab === "dossier" && (
