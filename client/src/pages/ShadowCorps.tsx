@@ -8,6 +8,8 @@ import { ShadowCorpsCodex } from "@/components/ShadowCorpsCodex";
 import { OperativeDossier } from "@/components/OperativeDossier";
 import { FactionIntelligence } from "@/components/FactionIntelligence";
 import { NexusMindTransmissions } from "@/components/NexusMindTransmissions";
+import { SignalChronicle } from "@/components/SignalChronicle";
+import { OperativeLexicon } from "@/components/OperativeLexicon";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import {
@@ -27,12 +29,14 @@ import {
   Fingerprint,
   Network,
   Wifi,
+  Clock,
+  BookOpen as LexiconIcon,
 } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 
-type Tab = "overview" | "crucible" | "audits" | "blackbook" | "codex" | "dossier" | "factions" | "transmissions";
+type Tab = "overview" | "crucible" | "audits" | "blackbook" | "codex" | "dossier" | "factions" | "transmissions" | "chronicle" | "lexicon";
 
 const LEVEL_INFO = {
   "1": {
@@ -295,10 +299,12 @@ export default function ShadowCorps() {
             <div className="flex gap-1 mb-6 bg-slate-800/30 p-1 rounded-lg border border-slate-700/50">
               {(
                 [
-                  { id: "transmissions", label: "Signals", icon: Wifi },
-                  { id: "codex", label: "Codex", icon: Radio },
-                  { id: "factions", label: "Factions", icon: Network },
-                  { id: "dossier", label: "Dossier", icon: Fingerprint },
+                  { id: "transmissions", label: "Signals",   icon: Wifi },
+                  { id: "codex",         label: "Codex",     icon: Radio },
+                  { id: "factions",      label: "Factions",  icon: Network },
+                  { id: "chronicle",     label: "Chronicle", icon: Clock },
+                  { id: "lexicon",       label: "Lexicon",   icon: LexiconIcon },
+                  { id: "dossier",       label: "Dossier",   icon: Fingerprint },
                 ] as { id: Tab; label: string; icon: React.FC<any> }[]
               ).map(({ id, label, icon: Icon }) => (
                 <button
@@ -477,6 +483,14 @@ export default function ShadowCorps() {
 
             {activeTab === "factions" && (
               <FactionIntelligence analystLevel={analystLevel} />
+            )}
+
+            {activeTab === "chronicle" && (
+              <SignalChronicle analystLevel={analystLevel} />
+            )}
+
+            {activeTab === "lexicon" && (
+              <OperativeLexicon />
             )}
 
             {activeTab === "dossier" && (
